@@ -98,14 +98,14 @@ class image_feature:
 
         lines 	   = cv.HoughLinesP(edges,1,np.pi/180,50,None,minLineLength,maxLineGap)
         lines_mask = cv.HoughLinesP(edges_mask,1,np.pi/180,10,None,30,maxLineGap)
-        image_mask = draw_lines(lines_mask,image,0,0,255,2)
+        image = draw_lines(lines,image,0,0,255,2)
                   
         ### Show image 
         #cv.imshow('image',image)
     	#cv.imshow('canny',edges)
     	#cv.imshow('undistored', undistored)
     	#cv.imshow('distorted',raw_img)
-    	cv.imshow('green mask', image_mask)
+    	#cv.imshow('green mask', image_mask)
     	cv.waitKey(2)
 
 
@@ -137,7 +137,8 @@ def draw_lines(lines, img,r = 255,g = 0,b = 0, thickness = 1):
             y2 = lines[i][0][3]
             line_length = length(x1,x2,y1,y2)           
             slope = slope_cal(x1,x2,y1,y2)
-            cv.line(img, (x1, y1), (x2, y2), (b, g, r), thickness, cv.LINE_AA)
+            if slope == 1 and line_length > 50 and line_length < 90:
+                cv.line(img, (x1, y1), (x2, y2), (b, g, r), thickness, cv.LINE_AA)
             #if slope is 0 and line_length < 50:
             #    cv.line(image, (x1, y1), (x2, y2), (0, 0, 255), 2, cv.LINE_AA)
             #    h_lines.append(lines[i])

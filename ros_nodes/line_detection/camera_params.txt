@@ -1,0 +1,7 @@
+contrast  8
+sharpness 95
+brightness 43
+saturation 53
+ISO 530
+exposurecomepnsation 0
+shutter speed 10000

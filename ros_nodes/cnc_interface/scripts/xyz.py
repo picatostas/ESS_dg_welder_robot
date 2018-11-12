@@ -7,40 +7,54 @@ import re
 # - X axis is perpendicular to the cross bar
 # - Z axis is perpendicular to the floor
 class XYZ:
-	__default_speed__ = 12000	# mm per second
+	__default_speed__ = 1000	# mm per second
 	__pos_pattern__ = re.compile('.Pos:(-?\d+[.]\d+),(-?\d+[.]\d+),(-?\d+[.]\d+)')	# for parsing GRBL feedback
 	
-	def __init__(self, limits=[0, 0, 0], speed=__default_speed__):
+	def __init__(self):
 		self.s = None				# serial port object
 		self.abs_move = None		# GRBL has 2 movement modes, relative and absolute
-		self.defaultSpeed = speed	# mm per second
-		
+		self.defaultSpeed = 1000	# mm per second
+		self.baudrate = 115200
+		self.port = '/dev/ttyACM0'
+		self.acceleration = 1000
+		self.x_max = 500
+		self.y_max = 500
+		self.z_max = 100
+		self.x_max_speed = 2000
+		self.y_max_speed = 2000
+		self.z_max_speed = 2000
+		self.x_steps_mm = 2560
+		self.y_steps_mm = 2560
+		self.z_steps_mm = 5000	
 		# vectors follow the format [X, Y, Z] where Z is assumed to be vertical
 		# self.steps_per_cm = [40, 40, 40]
 		# number of steps per centimeter in each dimension
 		self.pos = [0, 0, 0]		   # current position
 		self.origin = [0, 0, 0]		# minimum coordinates
-		self.limits = list(limits)	 # maximum coordinates
+		self.limits = [self.x_max, self.y_max, self.z_max]	 # maximum coordinates
 	
-	def startup(self, port, baud=115200, numInitialReads=3):
+	def startup(self, acc, maxx, maxy,maxz,spdx, spdy, spdz, stepsx, stepsy, stepsz):
 		""" initiate connection to the microcontroller """
-		self.s = serial.Serial(port, baud)
-		
-		# block by reading: GRBL will reply when it is ready
-		#for i in xrange(numInitialReads):
-		#	self.s.readline()
-		
-		# problem with reading at startup...?
+		#self.baudrate = baud
+		#self.port = port
+		self.acceleration = acc
+		self.x_max = maxx
+		self.y_max = maxy
+		self.z_max = maxz
+		self.x_max_speed = spdx
+		self.y_max_speed = spdy
+		self.z_max_speed = spdz
+		self.x_steps_mm = stepsx
+		self.y_steps_mm = stepsy
+		self.z_steps_mm = stepsz
+		self.s = serial.Serial(self.port, self.baudrate)
+		#self.s = serial.Serial('/dev/ttyACM0',115200)
+
 		time.sleep(2)
 
-		self.s.write("$X\n")		# unlock
-		self.s.readline()
-		self.s.readline()
 		self.ensureMovementMode(True)
-		#self.home_origin()
+		self.home()
 		self.set_origin()			# set the current position as the origin (GRBL sometimes starts with z not 0)
-		#TODO?
-		#self.calibrate()
 
 	def shutdown(self):
 		self.s.close()
@@ -66,7 +80,7 @@ class XYZ:
 		self.ensureMovementMode(absoluteMode = True)
 		
 		gcode = 'G0'
-		letters = 'xyz'
+		letters = 'XYZ'
 		pos = (x, y, z)
 		newpos = list(self.pos)
 		
@@ -81,7 +95,7 @@ class XYZ:
 				gcode += ' ' + letters[i] + str(pos[i])
 				newpos[i] = pos[i]
 
-		gcode += ' f' + str(speed)
+		gcode += ' F' + str(speed)
 		gcode += '\n'
 		
 		self.s.write(gcode)
@@ -103,7 +117,7 @@ class XYZ:
 
 		self.ensureMovementMode(absoluteMode = False)
 
-		gcode = 'G1'
+		gcode = 'G0'
 		letters = 'xyz'
 		d = (dx, dy, dz)
 		newpos = list(self.pos)
