@@ -1,0 +1,8 @@
+  <launch>
+    <!-- line detection node-->
+    <node  name="line_detection"  pkg="line_detection" type="line_detection.py">
+
+      <param name="pattern_fname" type="String" value=home/multigrid/catkin_ws/src/line_detection/scripts/pattern.png" /> 
+
+    </node>
+  </launch>
