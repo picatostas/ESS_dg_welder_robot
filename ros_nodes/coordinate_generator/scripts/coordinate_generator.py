@@ -5,34 +5,23 @@ import roslib
 roslib.load_manifest('coordinate_generator')
 import rospy
 import math
+from geometry_msgs.msg import Twist
 import tf
-import geometry_msgs.msg
-#vars
-
-#defs
-class coord_gen(object):
-	"""docstring for coord_gen"""
-	def __init__(self, arg):
-		#
-		self.cnc_pub = rospy.Publisher('cnc_cmd', Twist, cmd_move_callback,queue_size = 10)
-		self.detection_suscribe = rospy.Sus
-	def frame_callback(self, ros_data):
-		#
+import sys
+def cnc_callback(ros_data):
+	br = tf.TransformBroadcaster()
+	x = ros_data.linear.x
+	y = ros_data.linear.y
+	z = ros_data.linear.z 
+	br.sendTransform((x,y,z),(0,0,0,1),rospy.Time.now(),"camera","cnc")
+	br.sendTransform((132,0,186),(0,0,0,1),rospy.Time.now(),"cnc","world")
 
 
 def main(args):
 	rospy.init_node('coordinate_gen', anonymous = False)
+	cnc_sub = rospy.Subscriber('cnc_position_state', Twist, cnc_callback)
 
-
-
-	rate = rospy.Rate(1.0)
-	while not rospy.is_shutdown():
-		try:
-			
-		except (tf.Exception,tf.LookupException, tf.ConnectivityException):
-		continue
-
-		rate.sleep()
+	rospy.spin()
 #main
 
 if __name__ == '__main__':

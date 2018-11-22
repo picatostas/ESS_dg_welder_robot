@@ -15,10 +15,11 @@ import cv2 as cv
 import roslib
 import rospy
 import imutils
+import matplotlib.pyplot as plt
 # Ros Messages
 from sensor_msgs.msg import CompressedImage
 from sensor_msgs.msg import CameraInfo
-
+from sensor_msgs.msg import Image
 #Houglines detection
 minLineLength = 10
 maxLineGap = 30
@@ -26,14 +27,15 @@ maxLineGap = 30
 lowTh = 50
 HighTh = 200
 slope_th = 0.044 #rads
-
+px_to_mm = 0.1499 # pseudo empiric value
 #HSV green mask parameters
 sensitivity = 20
 lower_green = np.array([60 - sensitivity,0,0])
 upper_green = np.array([60 + sensitivity,200,200])
 # Distortion parameters 
-pattern = []
 font = cv.FONT_HERSHEY_SIMPLEX
+frames = []
+
 
 class image_feature:
 
@@ -41,14 +43,19 @@ class image_feature:
         # topic where we publish
         self.VERBOSE = False
         self.ready = True
-        #### valores para 1280x720
-        self.camera_matrix = np.array([[1276.704618338571, 0, 634.8876509199106],[0, 1274.342831275509, 379.8318028940378],[0.0, 0.0, 1.0]])
-        self.dist_coeff    = np.array([0.1465167016954302, -0.2847343180128725, 0.00134017721235817, -0.004309553450829512, 0])
+        #### values for 1280x720 default
+        #self.camera_matrix = np.array([[1276.704618338571, 0, 634.8876509199106],[0, 1274.342831275509, 379.8318028940378],[0.0, 0.0, 1.0]])
+        #self.dist_coeff    = np.array([0.1465167016954302, -0.2847343180128725, 0.00134017721235817, -0.004309553450829512, 0])
+        #### values for 1280x960 default
+        self.camera_matrix = np.array([[1014.343103379204, 0, 637.2463708126373],[0, 1011.69373183754, 469.5663779911617],[0.0, 0.0, 1.0]])
+        self.dist_coeff    = np.array([0.1570058008946036, -0.2862704919204555, -5.60164774255961e-05, 0.001586362091473342, 0])
         
+
+
+
         self.image_pub = rospy.Publisher("/lines_detected/compressed",
             CompressedImage, queue_size = 1)
 
-        # subscribed Topic
         self.subscriber = rospy.Subscriber("/raspicam_node/image/compressed",
             CompressedImage, self.frame_callback,  queue_size = 10)
 
@@ -76,63 +83,72 @@ class image_feature:
 
         np_arr = np.fromstring(ros_data.data, np.uint8)
         image = cv.imdecode(np_arr, cv.IMREAD_COLOR)
-        #raw_img = image
 
+        ### Camera distortion correction
         h = np.size(image,0)
         w = np.size(image,1)
+        lines_hist = [0]*w
         K = self.camera_matrix
         d = self.dist_coeff
-
+        #print("w: " + str(w) + " h: " + str(h))
         newcamera, roi = cv.getOptimalNewCameraMatrix(K,d,(w,h),0)
         image = cv.undistort(image, K,d, None, newcamera)
-        #undistored = image
-        image_hsv = cv.cvtColor(image,cv.COLOR_BGR2HSV)
-        green_mask = cv.inRange(image_hsv,lower_green,upper_green)
-        gray = cv.cvtColor(image,cv.COLOR_BGR2GRAY)
+        ###
+
+        #### Green Mask 
+        #image_hsv = cv.cvtColor(image,cv.COLOR_BGR2HSV)
+        #green_mask = cv.inRange(image_hsv,lower_green,upper_green)
+        ####
+
+        ### canny detection
+        gray  = cv.cvtColor(image,cv.COLOR_BGR2GRAY)
+        edges = cv.Canny(gray, lowTh, HighTh,apertureSize = 3)
+        lines = cv.HoughLinesP(edges,1,np.pi/180,40,None,minLineLength,maxLineGap)
+        ###
+
         #### FINDING CORNERS 
-        #gray_harris = np.float32(gray)
-        #dst = cv.cornerHarris(gray_harris,2,3,0.04)
-        #dst = cv.dilate(dst, None)
-        #ret, dst = cv.threshold(dst,0.01*dst.max(),255,0)
-        #dst = np.uint8(dst)
-        ## find centroids
-        #ret, labels, stats, centroids = cv.connectedComponentsWithStats(dst)
-        ## define the criteria to stop and refine the corners
-        #criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 100, 0.01)
-        #corners = cv.cornerSubPix(gray,np.float32(centroids),(5,5),(-1,-1),criteria)
-        ## Now draw them
-        #res = np.hstack((centroids,corners))
-        #res = np.int0(res)
-        #image[res[:,3],res[:,2]] = [0,255,0]
+        gray_harris = np.float32(gray)
+        dst = cv.cornerHarris(gray_harris,2,3,0.04)
+        dst = cv.dilate(dst, None)
+        ret, dst = cv.threshold(dst,0.01*dst.max(),255,0)
+        dst = np.uint8(dst)
+        # find centroids
+        ret, labels, stats, centroids = cv.connectedComponentsWithStats(dst)
+        # define the criteria to stop and refine the corners
+        criteria = (cv.TERM_CRITERIA_EPS + cv.TERM_CRITERIA_MAX_ITER, 100, 0.01)
+        corners = cv.cornerSubPix(gray,np.float32(centroids),(5,5),(-1,-1),criteria)
+        # Now draw them
+        res = np.hstack((centroids,corners))
+        res = np.int0(res)
+        image[res[:,3],res[:,2]] = [0,255,0]
+        cv.putText(image,str("Corners: " + str(len(corners))),(40,120), font, 1,(0,0,0),2,cv.LINE_AA)
+        ####
 
-        # canny detection
-        edges   = cv.Canny(gray, lowTh, HighTh,apertureSize = 3)
-        #edges_mask = cv.Canny(green_mask, lowTh, HighTh, apertureSize = 7)
-
-        lines   = cv.HoughLinesP(edges,1,np.pi/180,40,None,minLineLength,maxLineGap)
-
-        ## Pattern recognition 
+        ### Pattern recognition 
         template = cv.imread('/home/multigrid/catkin_ws/src/line_detection/scripts/pattern.png')
         startX, startY, endX, endY = match_template(template, image)
         cv.rectangle(image, (startX, startY), (endX, endY), (0, 0, 255), 1)
         centerX = (startX + endX)/2
         centerY = (startY + endY)/2
         #print("Center of the marker: " + str(centerX) + "," + str(centerY))
+        ###
 
-        image = draw_lines(centerY,lines,image,0,0,255,2)
+        if lines is not None:
+            image, lines = draw_lines(centerX,centerY,lines,lines_hist,image,0,0,255,2)
 
-        #cv.putText(image,str("Corners: " + str(len(corners))),(40,80), font, 1,(0,0,0),2,cv.LINE_AA)
-        cv.putText(image,str("MG Welder Robot"),(600,40), font, 1,(0,0,0),3,cv.LINE_AA)
+        cv.putText(image,str("MG Welder Robot"),(550,40), font, 1,(0,0,0),3,cv.LINE_AA)
         cv.drawMarker(image,(centerX,centerY),(0,255,0),cv.MARKER_CROSS ,40,1,cv.LINE_AA)
+        cv.drawMarker(image,(w/2,h/2),(0,255,255),cv.MARKER_TILTED_CROSS ,80,1,cv.LINE_AA)
         cv.circle(image,(centerX,centerY), 20, (0,255,0),1,cv.LINE_AA)
 
-        ### Show image 
+        #### Show image 
         #cv.imshow('template',template)
         #cv.imshow('image',res)
     	#cv.imshow('canny',edges)
     	#cv.imshow('undistored', undistored)
     	#cv.imshow('distorted',raw_img)
     	#cv.imshow('green mask', image_mask)
+        ####
     	cv.waitKey(2)
 
 
@@ -145,16 +161,14 @@ class image_feature:
         self.image_pub.publish(msg)
 
 def main(args):
-    '''Initializes and cleanup ros node'''
     ic = image_feature()
-    
-    rospy.init_node('image_feature', anonymous=True)
-    #pattern = rospy.get_param('/line_detection/pattern_fname')
+    rospy.init_node('line_detection', anonymous=False)
     try:
         rospy.spin()
     except KeyboardInterrupt:
         print "Shutting down ROS Image feature detector module"
     cv.destroyAllWindows()
+
 
 def match_template(template, image):
     template = cv.cvtColor(template, cv.COLOR_BGR2GRAY)
@@ -185,32 +199,56 @@ def match_template(template, image):
     (endX, endY) = (int((maxLoc[0] + tW) * r), int((maxLoc[1] + tH) * r)) 
     return startX, startY, endX, endY
 
-def draw_lines(centerY,lines, img,r = 255,g = 0,b = 0, thickness = 1):
-    if lines is not None:
-        valid_lines = 0
-        for i in range(0,len(lines)):
-            x1 = lines[i][0][0]
-            y1 = lines[i][0][1]
-            x2 = lines[i][0][2]
-            y2 = lines[i][0][3]
-            line_length = length(x1,x2,y1,y2)
-            current_line = []
-            slope = slope_cal(x1,x2,y1,y2)
-            if slope == 1 and line_length > 60 and line_length < 75:
-                if ( (centerY - y1) > 30 and (centerY - y1) < 46 ) or ((centerY - y2) > 30 and (centerY - y2) < 46):
-                    valid_lines +=1
-                    cv.line(img, (x1, y1), (x2, y2), (b, g, r), thickness, cv.LINE_AA)
-                    ytext = 0
-                    if y1<=y2:
-                        ytext = y2
-                    else:
-                        ytext = y1
-                    cv.putText(img,str( "(" + str(x1) + ","  + str(ytext) + ")"),(x1 - 40,ytext + 50), font, 0.5,(0,0,255),1,cv.LINE_AA)
-                    cv.drawMarker(img,(x1,int(y1 -   line_length/3)),(0,255,0),cv.MARKER_TILTED_CROSS ,10,2,cv.LINE_AA)
-                    cv.drawMarker(img,(x1,int(y1 - 2*line_length/3)),(0,255,0),cv.MARKER_TILTED_CROSS ,10,2,cv.LINE_AA)
-        cv.putText(img,str("Lines: " + str(valid_lines)),(40,40), font, 1,(0,0,0),2,cv.LINE_AA)        
 
-    return img
+def draw_lines(centerX,centerY,lines,lines_hist, img,r = 255,g = 0,b = 0, thickness = 1):
+    #valid_lines = 0
+    valid_lines = []
+    acum_length = 0
+    for i in range(0,len(lines)):
+        x1 = lines[i][0][0]
+        y1 = lines[i][0][1]
+        x2 = lines[i][0][2]
+        y2 = lines[i][0][3]
+        line_length = length(x1,x2,y1,y2)
+        current_line = []
+        slope = slope_cal(x1,x2,y1,y2)
+        dist_to_ref = 0
+        
+        # Check if the line is vertical and with the desired length
+        if slope == 1 and line_length > 60 and line_length < 75:
+            # discard the lines that dont start where the blade should start
+            if ( (centerY - y1) > 30 and (centerY - y1) < 46 ) or ((centerY - y2) > 30 and (centerY - y2) < 46):
+                #valid_lines +=1
+                acum_length += line_length
+                valid_lines.append(lines[i][0])
+                cv.line(img, (x1, y1), (x2, y2), (b, g, r), thickness, cv.LINE_AA)
+                # Text print
+                ytext = 0
+                if y1<=y2:
+                    ytext = y2
+                    dist_to_ref = length(centerX,x2,centerY,y2)
+                else:
+                    ytext = y1
+                    dist_to_ref = length(centerX,x1,centerY,y1)
+                x_mean = (x1 + x2)/2
+                lines_hist[int(x_mean)] += 1
+                dist_to_ref = dist_to_ref*px_to_mm
+                #cv.putText(img,str( "(" + str(x1) + ","  + str(ytext) + ")"),(x1 - 40,ytext + 50), font, 0.5,(0,0,255),1,cv.LINE_AA)
+                #cv.putText(img,str(line_length),(x1 - 20,ytext + 70), font, 0.5,(0,0,255),1,cv.LINE_AA)
+                cv.putText(img,str(str('%.2f'% dist_to_ref) + "mm"),(x1 - 20,ytext + 90), font, 0.5,(0,0,255),1,cv.LINE_AA)
+                #cv.putText(img,str( "(" + str(x1) + ","  + str(ytext) + ")"),(x1 - 40,ytext + 50), font, 0.5,(0,0,255),1,cv.LINE_AA)
+                cv.drawMarker(img,(x1,int(y1 -   line_length/3)),(0,255,0),cv.MARKER_TILTED_CROSS ,10,2,cv.LINE_AA)
+                cv.drawMarker(img,(x1,int(y1 - 2*line_length/3)),(0,255,0),cv.MARKER_TILTED_CROSS ,10,2,cv.LINE_AA)                
+    #cv.putText(img,str("Lines: " + str(valid_lines)),(40,40), font, 1,(0,0,0),2,cv.LINE_AA)
+    #plt.hist(lines_hist)
+    #plt.draw()
+    avg_length = acum_length/len(valid_lines)
+    cv.putText(img,str("avg_ length: " + str('%.2f' %avg_length)),(40,70), font, 1,(0,0,0),2,cv.LINE_AA)        
+    cv.putText(img,str("Lines: " + str(len(valid_lines))),(40,40), font, 1,(0,0,0),2,cv.LINE_AA)        
+
+    return img, lines_hist
+
+
 def slope_cal(x0,x1,y0,y1):
     slope = np.arctan2((y1-y0),(x1-x0))
     if  np.abs(slope - 0) < slope_th or np.abs(slope - np.pi) < slope_th:
@@ -223,7 +261,10 @@ def slope_cal(x0,x1,y0,y1):
 def length(x0,x1,y0,y1):
     return np.sqrt(np.power(y1-y0,2) + np.power(x1-x0,2))
 
+def discard_lines(valid_lines, img_width):
 
+
+    print("holis")
 
 if __name__ == '__main__':
     main(sys.argv)

@@ -30,6 +30,7 @@ class XYZ:
 		# self.steps_per_cm = [40, 40, 40]
 		# number of steps per centimeter in each dimension
 		self.pos = [0, 0, 0]		   # current position
+		self.angular = [0, 0, 0]
 		self.origin = [0, 0, 0]		# minimum coordinates
 		self.limits = [self.x_max, self.y_max, self.z_max]	 # maximum coordinates
 	
