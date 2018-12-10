@@ -34,7 +34,7 @@ px_to_mm = 0.1499 # pseudo empiric value
 
 # Macros for lines/blade sort
 LINES_PER_BLADE = 10
-FRAMES_NUMBER = 15
+FRAMES_NUMBER = 20
 
 font = cv.FONT_HERSHEY_SIMPLEX
 
@@ -103,7 +103,7 @@ class image_feature:
             line = []            
             for lines in range(len(self.blade_hist[blades])):
                 # Check which of the points that make the line is lower so we store them properly
-                if self.blade_hist[blades][lines][0] > self.blade_hist[blades][lines][2]:
+                if self.blade_hist[blades][lines][3] > self.blade_hist[blades][lines][1]:
                     x1_acum += self.blade_hist[blades][lines][2]
                     y1_acum += self.blade_hist[blades][lines][3]
                     x2_acum += self.blade_hist[blades][lines][0]
@@ -125,7 +125,7 @@ class image_feature:
                 line.append('%.2f' % (( y2_acum - self.grid_ref[1] )*px_to_mm*(-1) ))
                 lines_ref[blades].append(line)
             ## Draw detected lines lines in image
-            cv.line(img, (x1_acum, y1_acum), (x2_acum, y2_acum), (200, 0, 200), 2, cv.LINE_AA)
+            cv.line(img, (x1_acum, y1_acum), (x2_acum, y2_acum), (200, 0, 200), 1, cv.LINE_AA)
 
             ## Draw position of tig welder spots
             line_length = length(x1_acum,x2_acum,y1_acum,y2_acum)
@@ -201,6 +201,8 @@ class image_feature:
         # Publish new image into the topic
         self.image_pub.publish(msg)
         ###
+        #cv.imshow('canny', canny )
+        #cv.destroyAllWindows()
         # Just to check the histogram of lines detected by blade
         #plt.plot(self.lines_hist)
         #plt.show()    
