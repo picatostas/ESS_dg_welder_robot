@@ -2,10 +2,10 @@ import numpy as np
 import cv2
 import glob
 # squeare size in mm 
-square_size = 24 
+square_size = 25 
 # chessboard size 
-chess_rows = 7
-chess_columns = 9
+chess_rows = 6
+chess_columns = 8
 # termination criteria
 criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, square_size, 0.001)
 

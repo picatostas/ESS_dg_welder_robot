@@ -34,7 +34,7 @@ px_to_mm = 0.1499 # pseudo empiric value
 
 # Macros for lines/blade sort
 LINES_PER_BLADE = 10
-FRAMES_NUMBER = 20
+FRAMES_NUMBER = 30
 
 font = cv.FONT_HERSHEY_SIMPLEX
 
@@ -55,7 +55,7 @@ class image_feature:
         self.template = cv.imread('/home/multigrid/catkin_ws/src/line_detection/scripts/pattern.png')
         ## This values are in pixes for 1080x960 res and a camera position of z30 and aprox 154 mm from grid 
         self.blade_loc = 89.58 , 153.81 , 221.76 , 285.96 , 354.84 , 421.57 , 489.30 , 555.31 , 621.92 , 687.86 , 753.63 , 819.42 , 883.50 , 948.99 , 1016.79 , 1081.44
-        self.detect_query = rospy.Subscriber("detection_query",String,
+        self.detect_query = rospy.Subscriber("/detection_query",String,
              self.query_callback , queue_size = 10)
 
         self.image_pub = rospy.Publisher("/lines_detected/compressed",
@@ -134,9 +134,21 @@ class image_feature:
         print("Line points referenced from Marker")
         blades_msg = np.array(lines_ref)
         for blade in range(len(blades_msg)):
-            print("Blade n: " +str(blade)+" "+ str(blades_msg[blade]) )
-        for blade in range(len(blades_msg)):   
-            self.blades_pub.publish(str(blades_msg[blade][0]))
+            print("Blade n: " +str(blade)+" "+ str(blades_msg[blade]))
+
+        publish_blades = True
+
+        for blade in blades_msg:
+
+            if blade[0] is None:
+
+                publish_blades = False
+                print("Publish cancelled, a blade wasnt found")
+                break
+
+        if publish_blades:
+            for blade in range(len(blades_msg)):   
+                self.blades_pub.publish(str(blades_msg[blade][0]))
 
         return img
 

@@ -55,7 +55,7 @@ class laser_ctrl:
 		msg.data = np.array(cv.imencode('.jpg', image)[1]).tostring()
 		self.location_pub.publish(msg)
 
-	#def broadcast_pos(self):
+	#def broadcast_pos(self):	
 def main(args):
     laser = laser_ctrl()
     rospy.init_node('laser_ctrl', anonymous=False)
