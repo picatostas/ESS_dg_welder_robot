@@ -12,19 +12,18 @@ font = cv.FONT_HERSHEY_SIMPLEX
 class laser_ctrl:
 
 	def __init__(self):
-		#self.pos = [0,0,0]
 		self.location_pub  = rospy.Publisher("/laser_ctrl/img_feed/compressed", CompressedImage, queue_size = 1)
-		self.cmd_sub       = rospy.Subscriber("/laser_ctrl/cmd", String,self.cmd_callback , queue_size = 10)
 		self.image_sub     = rospy.Subscriber("/raspicam_node/image/compressed",CompressedImage,self.image_callback, queue_size = 10)
+		self.laser_status  = rospy.Subscriber("/laser_ctrl/status",String, self.cmd_callback, queue_size = 10)
 		self.status        = False
 		self.camera_matrix = np.array([[1014.343103379204, 0, 637.2463708126373],[0, 1011.69373183754, 469.5663779911617],[0.0, 0.0, 1.0]])
 		self.dist_coeff    = np.array([0.1570058008946036, -0.2862704919204555, -5.60164774255961e-05, 0.001586362091473342, 0])		
 
 	def cmd_callback(self,ros_data):
 		msg = ros_data.data
-		if   msg == 'f':#fire
+		if   msg == '1':#fire
 			self.status = True
-		elif msg == 's':#stop
+		elif msg == '0':#stop
 			self.status = False
 
 	def image_callback(self,ros_data):

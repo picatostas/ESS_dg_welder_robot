@@ -9,25 +9,35 @@ laser_states = {"LASER_OFF" : "0",
 
 def next_is_blade():
 
-	return robot.is_blade
+	return (robot.next_is_blade and robot.laser_sync)
+	#if robot.next_is_blade:
+	#	return True
+	#return False
+
 
 def next_is_not_blade():
 
-	return not robot.is_blade
+	return (not robot.next_is_blade and robot.laser_sync)
+	#if robot.next_is_blade:
+	#	return False
+	#return True
 
-def turn_on():
-	print("LASER_FSM: Turning on the laser")
+
+def send_turn_on():
+	print("LASER_FSM: Sending ON Command")
+	robot.laser_cmd = True
+	robot.laser_sync = False
 	robot.laser_pub.publish('f')
-	robot.laser_status = True
 
 
-def turn_off():
-	print("LASER_FSM: Turning off the laser")
+def send_turn_off():
+	print("LASER_FSM: Sending OFF Command")
+	robot.laser_cmd = False
+	robot.laser_sync = False
 	robot.laser_pub.publish('s')
-	robot.laser_status = False
 
-laser_trans_tt = [fsm_trans(laser_states["LASER_OFF"],     next_is_blade,  laser_states["LASER_ON"],  turn_on),
-			      fsm_trans( laser_states["LASER_ON"], next_is_not_blade, laser_states["LASER_OFF"], turn_off)]
+laser_trans_tt = [fsm_trans(laser_states["LASER_OFF"],     next_is_blade,  laser_states["LASER_ON"],  send_turn_on),
+			      fsm_trans( laser_states["LASER_ON"], next_is_not_blade, laser_states["LASER_OFF"], send_turn_off)]
 
 def laser_fsm_new():
 	return fsm(laser_trans_tt,laser_states["LASER_OFF"])

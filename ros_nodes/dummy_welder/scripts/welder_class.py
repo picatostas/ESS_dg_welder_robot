@@ -14,21 +14,34 @@ line_regex = re.compile('(\-?\d+\.\d+)')
 
 class welder:
 	def __init__(self):
-		# publisher/ subscriber handlers
-		self.blade_loc_sub  = rospy.Subscriber('/blades_location', String, self.traj_callback,queue_size = 16 )
-		self.cnc_pos_sub    = rospy.Subscriber('/cnc_interface/position', Twist, self.cnc_pos_callback, queue_size = 10)
-		self.laser_pub      = rospy.Publisher('/laser_ctrl/cmd', String, queue_size = 10)
-		self.cnc_pub        = rospy.Publisher('/cnc_cmd', Twist, queue_size = 10)
-		self.line_query_pub = rospy.Publisher('/detection_query',String, queue_size = 10)
-		self.start_sub      = rospy.Subscriber('/welder/start', String, self.start_callback, queue_size = 10)
-		# reference points
-		self.grid_ref     = [341.70, 401.70, 30.00]
-		self.center_point = [257.50, 410.00, 30.00] # [262.50, 410.00, 30.00]
+		# subscriber handlers
+		self.blade_loc_sub          = rospy.Subscriber('/blades_location', String, self.traj_callback,queue_size = 16 )
+		self.cnc_pos_sub            = rospy.Subscriber('/cnc_interface/position', Twist, self.cnc_pos_callback, queue_size = 10)
+		self.laser_status_sub       = rospy.Subscriber('/laser_ctrl/status', String,self.laser_status_callback, queue_size = 10)
+		self.start_sub              = rospy.Subscriber('/welder/start', String, self.start_callback, queue_size = 10)
+		# publisher handlers
+		self.laser_pub              = rospy.Publisher('/laser_ctrl/cmd', String, queue_size = 10)
+		#self.laser_status_query_pub = rospy.Publisher('/laser_ctrl/laser_status_query', String, queue_size = 10)
+		self.cnc_pub                = rospy.Publisher('/cnc_cmd', Twist, queue_size = 10)
+		self.line_query_pub         = rospy.Publisher('/detection_query',String, queue_size = 10)
+		
+		## reference points Template
+		#self.grid_ref     = [336.30, 402.70, 30.00]
+		#self.center_point = [254.50, 409.00, 30.00]
+		##
+
+		## reference points Real Grid
+		self.grid_ref     = [340.70, 219.30, 20.00]
+		self.center_point = [260.90, 229.10, 20.00]	
+		##
+
 		self.cnc_pos      = [   0.0,    0.0,   0.0]
 		self.start        = False
 		# boolean variables for fsm
-		self.is_blade  = False
+		self.next_is_blade  = False
 		self.laser_status = False
+		self.laser_cmd = False
+		self.laser_sync = True
 		# traj related variables
 		self.last_point = [ 0.0, 0.0, 0.0]
 		self.traj = []
@@ -36,10 +49,19 @@ class welder:
 		self.traj_completed = False
 		self.traj_received  = False
 
+	def laser_status_callback(self,ros_data):
+
+		msg = ros_data.data
+		if   msg == '1':#fire
+			self.laser_status = True
+		elif msg == '0':#stop
+			self.laser_status = False		
+
 	def start_callback(self,ros_data):
 
 		char = ros_data.data
 		if char == 's':
+			#self.laser_status_query_pub.publish('q')
 			self.start = True
 
 	def cnc_pos_callback(self,ros_data):
@@ -62,7 +84,6 @@ class welder:
 			print("Received traj size of %d blades with %d points, %d coords" %(len(self.received_traj),len(self.received_traj[0]),len(self.received_traj[0][0])))
 			for blade in self.received_traj:
 				for point in blade:
-					# float(('%.2f'% dist_to_ref))
 					point[0] = float(('%.2f'% float(point[0]) )) + self.grid_ref[0]
 					point[1] = float(('%.2f'% float(point[1]) )) + self.grid_ref[1]
 					point.append(self.grid_ref[2])
@@ -70,7 +91,7 @@ class welder:
 			self.traj_received = True
 			self.traj_complete = False
 			self.received_traj = []
-			self.print_traj()
+			#self.print_traj()
 
 
 	def print_traj(self):
@@ -110,6 +131,6 @@ class welder:
 		else:
 			next_p = self.make_twist(point)
 
-		print('ROBOT_FSM : Moving to X: %.2f Y: %.2f Z: %.2f' %((next_p.linear.x) , (next_p.linear.y) ,(next_p.linear.z)))
+		print('ROBOT_FSM: Moving to X: %.2f Y: %.2f Z: %.2f' %((next_p.linear.x) , (next_p.linear.y) ,(next_p.linear.z)))
 		self.cnc_pub.publish(next_p)
 

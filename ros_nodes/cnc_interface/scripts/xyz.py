@@ -17,7 +17,7 @@ class XYZ:
 		self.cncStateTopic = rospy.Publisher('/cnc_interface/state', String, queue_size = 10)
 		self.s = None				# serial port object
 		self.abs_move = None		# GRBL has 2 movement modes, relative and absolute
-		self.defaultSpeed = 1000	# mm per second
+		self.defaultSpeed = 1000	# mm per min
 		self.baudrate = 115200
 		self.port = '/dev/ttyACM0'
 		self.wait_resp = False

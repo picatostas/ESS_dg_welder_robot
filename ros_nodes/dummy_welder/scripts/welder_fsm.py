@@ -9,7 +9,8 @@ welder_states = {"IDLE"       : "0",
     			  "WAIT_TRAJ" : "2",
     			  "WAIT_MARK" : "3",
     			  "DO_TRAJ"   : "4",
-    			  "WAIT_POINT": "5"}
+    			  "WAIT_POINT": "5",
+    			  "WAIT_LASER": "6"}
 
 robot = welder()
 
@@ -53,46 +54,59 @@ def is_traj_completed():
 
 def is_not_traj_completed():
 
-	return not robot.traj_completed
+
+	return (not robot.traj_completed)
 
 def is_cnc_last():
 
 	cnc = []
 	rob = []
 	for i in range(2):
-		cnc.append(( '%.2f' % robot.cnc_pos[0]) )
-		rob.append(( '%.2f' % robot.last_point[0]) )
-	
+		cnc.append(( '%.2f' % robot.cnc_pos[i]) )
+		rob.append(( '%.2f' % robot.last_point[i]) )
 	return cnc == rob
+	#if cnc == rob:
+	#	print("CNC is :" +  str(cnc) + " ROBOT is :" + str(rob))
+	#	return True
 
 def is_cnc_not_last():
 
 	cnc = []
 	rob = []
 	for i in range (2):
-		cnc.append(( '%.2f' % robot.cnc_pos[0]) )
-		rob.append(( '%.2f' % robot.last_point[0]) )
+		cnc.append(( '%.2f' % robot.cnc_pos[i]) )
+		rob.append(( '%.2f' % robot.last_point[i]) )
 	
 	return cnc != rob
 
+def is_laser_sync():
+
+	#return True
+	return  robot.laser_cmd == robot.laser_status
+
+def is_not_laser_sync():	
+
+	#return False
+	return  robot.laser_cmd != robot.laser_status
 
 # transition callbacks
 
+
 def center():
 
-	print("ROBOT_FSM : Robot started, awaiting centering")
+	print("ROBOT_FSM: Robot started, awaiting centering")
 	robot.start = False
 	robot.move_to(robot.center_point,0)
 
 def detection_query():
 
-	print("ROBOT_FSM : Robot centered, awating coordinates")
+	print("ROBOT_FSM: Robot centered, awating coordinates")
 	char = 'q'
 	robot.line_query_pub.publish(char)
 
 def place_on_marker():
 
-	print("ROBOT_FSM : Robot centered, awaiting reference marking")
+	print("ROBOT_FSM: Awaiting reference marking")
 	robot.move_to(robot.grid_ref,0)
 
 ##############################################
@@ -108,34 +122,40 @@ def place_on_marker():
 
 def calculate_point():
 
-	robot.is_blade = False
+	# first Point in the traj 
 	if len(robot.traj) == 16 and len(robot.traj[0]) == 2:
-		robot.is_blade = False
-		print("ROBOT_FSM : Trajectory initiated")
 		robot.last_point = robot.traj[0].pop(0)
+		robot.next_is_blade = False
+	# rest of the points
 	else:
-		robot.is_blade = False
-		print("ROBOT_FSM : Next point to process")
+		#print("ROBOT_FSM: Next point to process")
+		# new blade ? 
+		#closest point
 		if len(robot.traj[0]) > 1:
+			robot.next_is_blade = False
 			dist1 = length(robot.last_point, robot.traj[0][0])
 			dist2 = length(robot.last_point, robot.traj[0][1])
-			#print("dist to point 1 of next blade :" + str(dist1))
-			#print("dist to point 2 of next blade :" + str(dist2))
-			print("ROBOT_FSM: Welding in grid")
-			robot.is_blade = True
 			if dist1 < dist2:
 				robot.last_point = robot.traj[0].pop(0)
 			else:
 				robot.last_point = robot.traj[0].pop(1)
+
+		# already in blade
 		else:
-			robot.is_blade = False
+			robot.next_is_blade = True
 			robot.last_point = robot.traj[0].pop(0)
-	#print("Point type : " + str(type(robot.last_point)))
+	
+
 	for coord in robot.last_point:
 		coord = '%.2f' % coord
-		#print(coord)		
+
 	print("ROBOT_FSM: Point -> %s"% robot.last_point[:2])
+
+def send_point():
+	print("ROBOT_FSM: Laser synced, moving CNC")
+	robot.laser_sync = True
 	robot.move_to(robot.last_point,0)
+
 
 def update_traj():
 
@@ -143,15 +163,21 @@ def update_traj():
 	if len(robot.traj[0]) == 0:
 		robot.traj.pop(0)
 		print("ROBOT_FSM: blade finished, %d blades remaining" %len(robot.traj))
+
 	if len(robot.traj) == 0:
-		print("ROBOT_FSM : Trajectory completed")
-		robot.move_to(robot.center_point,0)
-		#robot.start = False
+		print("ROBOT_FSM: Trajectory completed")
 		robot.traj_completed = True
+		robot.laser_cmd = False
+		robot.laser_sync = True
+		robot.next_is_blade = False
+		#robot.move_to(robot.center_point,0)
 	else:
-		print("ROBOT_FSM : Trajectory on progress")
+		print("ROBOT_FSM: Trajectory on progress")
 		robot.traj_completed = False
 
+def marker_reached():
+
+	print("ROBOT_FSM: Marker Reached, Starting Traj")
 
 welder_trans_tt = [fsm_trans(        welder_states["IDLE"],          is_not_start,        welder_states["IDLE"],            None),
 				   fsm_trans(        welder_states["IDLE"],              is_start, welder_states["WAIT_CENTER"], 		  center),
@@ -160,8 +186,10 @@ welder_trans_tt = [fsm_trans(        welder_states["IDLE"],          is_not_star
 			       fsm_trans(   welder_states["WAIT_TRAJ"],     traj_not_received,   welder_states["WAIT_TRAJ"],        	None),
 			       fsm_trans(   welder_states["WAIT_TRAJ"],         traj_received,   welder_states["WAIT_MARK"], place_on_marker),
 			       fsm_trans(   welder_states["WAIT_MARK"],         is_not_marker,   welder_states["WAIT_MARK"],        	None),
-			       fsm_trans(   welder_states["WAIT_MARK"],             is_marker,     welder_states["DO_TRAJ"],        	None),
-			       fsm_trans(     welder_states["DO_TRAJ"], is_not_traj_completed,  welder_states["WAIT_POINT"], calculate_point),
+			       fsm_trans(   welder_states["WAIT_MARK"],             is_marker,     welder_states["DO_TRAJ"],  marker_reached),
+			       fsm_trans(     welder_states["DO_TRAJ"], is_not_traj_completed,  welder_states["WAIT_LASER"], calculate_point),
+			       fsm_trans(  welder_states["WAIT_LASER"],     is_not_laser_sync,  welder_states["WAIT_LASER"],     		None),
+			       fsm_trans(  welder_states["WAIT_LASER"],         is_laser_sync,  welder_states["WAIT_POINT"],      send_point),
 			       fsm_trans(  welder_states["WAIT_POINT"],       is_cnc_not_last,  welder_states["WAIT_POINT"],            None),
 			       fsm_trans(  welder_states["WAIT_POINT"],           is_cnc_last,     welder_states["DO_TRAJ"],     update_traj),
 			       fsm_trans(     welder_states["DO_TRAJ"],     is_traj_completed,        welder_states["IDLE"],            None)]	

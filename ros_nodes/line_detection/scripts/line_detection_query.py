@@ -28,12 +28,12 @@ minLineLength = 10
 maxLineGap = 30
 #canny detection variables
 lowTh = 50
-HighTh = 200
+HighTh = 300 # 300 for real grid, 200 for template
 slope_th = 0.044 #threshold value for considering vertical lines, in rads
 px_to_mm = 0.1499 # pseudo empiric value
 
 # Macros for lines/blade sort
-LINES_PER_BLADE = 10
+LINES_PER_BLADE = 20
 FRAMES_NUMBER = 30
 
 font = cv.FONT_HERSHEY_SIMPLEX

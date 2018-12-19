@@ -19,14 +19,16 @@ def main(args):
 
 	welder_robot_fsm = welder_fsm_new()
 	laser_fsm = laser_fsm_new()
-
+	laser_status_query_pub = rospy.Publisher('/laser_ctrl/status_query', String, queue_size = 10)
 	rospy.init_node('dummy_welder', anonymous = False)
 
 	rate = rospy.Rate(10)
 
 	while not rospy.is_shutdown():
-		welder_robot_fsm.fire()
+		msg = 'q'
+		laser_status_query_pub.publish(msg)
 		laser_fsm.fire()
+		welder_robot_fsm.fire()
 		rate.sleep()
 
 	rospy.spin()
