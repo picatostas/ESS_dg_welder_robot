@@ -26,12 +26,12 @@ class welder:
 		self.line_query_pub         = rospy.Publisher('/detection_query',String, queue_size = 10)
 		
 		## reference points Template
-		#self.grid_ref     = [336.30, 402.70, 30.00]
+		#self.grid_ref     = [336.00, 402.70, 30.00]
 		#self.center_point = [254.50, 409.00, 30.00]
 		##
 
 		## reference points Real Grid
-		self.grid_ref     = [340.70, 219.30, 20.00]
+		self.grid_ref     = [340.50, 219.30, 20.00]
 		self.center_point = [260.90, 229.10, 20.00]	
 		##
 

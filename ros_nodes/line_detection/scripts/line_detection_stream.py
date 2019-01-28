@@ -144,7 +144,7 @@ class image_feature:
         #### Show image 
         #cv.imshow('template',template)
         #cv.imshow('image',res)
-    	cv.imshow('canny',edges)
+    	#cv.imshow('canny',edges)
     	#cv.imshow('undistored', undistored)
     	#cv.imshow('distorted',raw_img)
     	#cv.imshow('green mask', image_mask)
