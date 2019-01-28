@@ -63,8 +63,6 @@ class image_feature:
         self.blade_count        = np.zeros((3,16))
         self.blade_lines_sorted = self.blade_lines
         self.blade_loc = 89.58 , 153.81 , 221.76 , 285.96 , 354.84 , 421.57 , 489.30 , 555.31 , 621.92 , 687.86 , 753.63 , 819.42 , 883.50 , 948.99 , 1016.79 , 1081.44
-
-        self.template = cv.imread(img_path + 'pattern.png')
         ## This values are in pixes for 1080x960 res and a camera position of z30 and aprox 154 mm from grid 
         self.detect_query = rospy.Subscriber("/detection_query",String,
              self.query_callback , queue_size = 10)
@@ -73,11 +71,11 @@ class image_feature:
             CompressedImage, queue_size = 1)
         self.blades_pub = rospy.Publisher("/blades_location", String, queue_size = 40)
         self.subscriber = None # otherwise it doesnt work, as I need to resub each time that i got a query
-        self.template = cv.imread('/home/multigrid/catkin_ws/src/line_detection/scripts/pattern.png')
+        self.template = cv.imread(img_path + 'pattern.png')
         self.template = cv.cvtColor(self.template, cv.COLOR_BGR2GRAY)
         self.template = cv.Canny(self.template, canny_th[0], canny_th[1])
-        self.han_logo = cv.imread('/home/multigrid/catkin_ws/src/line_detection/scripts/han100.png')
-        self.ess_logo = cv.imread('/home/multigrid/catkin_ws/src/line_detection/scripts/ess100.png')
+        self.han_logo = cv.imread(img_path + 'han100.png')
+        self.ess_logo = cv.imread(img_path + 'ess100.png')
         self.han_logo_h = np.size(self.han_logo,0)
         self.han_logo_w = np.size(self.han_logo,1)
         self.ess_logo_h = np.size(self.ess_logo,0)
@@ -119,6 +117,9 @@ class image_feature:
 
     ## for all the possible lines found for a blade in a grid, average
     def sort_lines(self):
+        blades_msg = [[[], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []],
+                      [[], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []],
+                      [[], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []]]
         for grid_idx, grid in enumerate(self.blade_lines):
             for blade_idx, blade in enumerate(grid):
                 line_avg = np.zeros(4)            
@@ -136,14 +137,13 @@ class image_feature:
                         line_avg[3] += line[3]
                 # mean of all the points, least mean square could be used instead
                 line_avg /= len(blade)
-                line_format = []
-                line_format.append('%.2f' % (( self.grid_ref[grid_idx][0] - line_avg[0] )*px_to_mm ))
-                line_format.append('%.2f' % (( self.grid_ref[grid_idx][1] - line_avg[1] )*px_to_mm ))
-                line_format.append('%.2f' % (( self.grid_ref[grid_idx][0] - line_avg[2] )*px_to_mm ))
-                line_format.append('%.2f' % (( self.grid_ref[grid_idx][1] - line_avg[3] )*px_to_mm ))
-                self.blade_lines_sorted[grid_idx][blade_idx].append(line_format)
+                self.blade_lines_sorted[grid_idx][blade_idx] = line_avg                
+                blades_msg[grid_idx][blade_idx].append('%.2f' % (( self.grid_ref[grid_idx][0] - line_avg[0] )*px_to_mm ))
+                blades_msg[grid_idx][blade_idx].append('%.2f' % (( self.grid_ref[grid_idx][1] - line_avg[1] )*px_to_mm ))
+                blades_msg[grid_idx][blade_idx].append('%.2f' % (( self.grid_ref[grid_idx][0] - line_avg[2] )*px_to_mm ))
+                blades_msg[grid_idx][blade_idx].append('%.2f' % (( self.grid_ref[grid_idx][1] - line_avg[3] )*px_to_mm ))
 
-        for grid_idx, grid in enumerate(self.blade_lines_sorted):
+        for grid_idx, grid in enumerate(blades_msg):
             for blade_idx, blade in enumerate(grid):
                 print("Grid n:" +str(grid_idx) +" Blade n: " + str(blade_idx) + " " + str(blade))
                 self.blades_pub.publish(str(blade))
@@ -207,10 +207,9 @@ class image_feature:
             self.sort_lines()
 
             ## Draw lines and markers location 
-            for chunk_idx, grid in enumerate(self.blade_lines):
+            for chunk_idx, grid in enumerate(self.blade_lines_sorted):
                 for blade in grid:
-                    for line in blade:
-                        cv.line(image, (line[0],line[1] +chunk_size*chunk_idx ), (line[2],line[3] + chunk_size*chunk_idx), (200, 0, 200), 2, cv.LINE_AA)
+                        cv.line(image, (int(blade[0]),int(blade[1]) +chunk_size*chunk_idx ), (int(blade[2]),int(blade[3]) + chunk_size*chunk_idx), (200, 0, 200), 2, cv.LINE_AA)
 
             for idx, ctr in enumerate(self.grid_ref):            
                 cv.drawMarker(image,(int(ctr[0]),int(ctr[1])),(0,255,0),cv.MARKER_CROSS ,40,1,cv.LINE_AA)
@@ -224,7 +223,7 @@ class image_feature:
     
             image[0:self.han_logo_h,int(0.72*w):int(0.72*w + self.han_logo_w)] = self.han_logo
             image[0:self.ess_logo_h,int(0.15*w):int(0.15*w + self.ess_logo_w)] = self.ess_logo
-            cv.putText(image,str("MG Welder Robot : Han Solo"),(450,40), font, 1,(0,0,0),3,cv.LINE_AA)
+            cv.putText(image,str("MG Welder Robot : Han Solo"),(420,40), font, 1,(0,0,0),3,cv.LINE_AA)
             ### 
     
             ### Create and Publish CompressedIamge ####
