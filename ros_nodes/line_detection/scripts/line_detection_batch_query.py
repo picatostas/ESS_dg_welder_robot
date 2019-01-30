@@ -1,25 +1,17 @@
 #!/usr/bin/env python
 
 # Python libs
-import sys, time
-import glob
-
+import sys, time, glob, threading
 # numpy and scipy
 import numpy as np
 from scipy.ndimage import filters
-
 # OpenCV
 import cv2 as cv
-
 # Ros libraries
-import roslib
-import rospy
-import imutils
+import roslib, rospy, imutils
 import matplotlib.pyplot as plt
 # Ros Messages
-from sensor_msgs.msg import CompressedImage
-from sensor_msgs.msg import CameraInfo
-from sensor_msgs.msg import Image
+from sensor_msgs.msg import CompressedImage, CameraInfo, Image
 from std_msgs.msg import String
 from rospy.numpy_msg import numpy_msg
 from rospy_tutorials.msg import Floats
@@ -35,7 +27,7 @@ px_to_mm = 0.1499 # pseudo empiric value
 
 # Macros for lines/blade sort
 LINES_PER_BLADE = 5
-FRAMES_NUMBER = 10
+FRAMES_NUMBER = 5
 BLADES_PER_GRID = 16 #CSPEC
 loc_th = 20
 
@@ -43,6 +35,15 @@ chunk_factor = 3 # as the camera only frames 3 grids at a time
 image_chunks = []
 img_path = '/home/multigrid/catkin_ws/src/line_detection/scripts/'
 font = cv.FONT_HERSHEY_SIMPLEX
+#class cvThread(threading.Thread):
+#    def __init__(self,threadID, name, func):
+#        threading.Thread.__init__(self)
+#        self.ThreadID = threadID
+#        self.name = name
+#        self.func = func
+#    def run(self):
+#        self.func()
+
 
 class image_feature:
 
@@ -60,11 +61,11 @@ class image_feature:
         self.blade_lines        = [[[], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []],
                                    [[], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []],
                                    [[], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []]]
-
-        self.blade_count        = np.zeros((3,16))
         self.blade_lines_sorted = self.blade_lines
-        self.blade_loc = 89.58 , 153.81 , 221.76 , 285.96 , 354.84 , 421.57 , 489.30 , 555.31 , 621.92 , 687.86 , 753.63 , 819.42 , 883.50 , 948.99 , 1016.79 , 1081.44
+        self.blade_count        = np.zeros((3,16))
         ## This values are in pixes for 1080x960 res and a camera position of z30 and aprox 154 mm from grid 
+        self.blade_loc = 89.58 , 153.81 , 221.76 , 285.96 , 354.84 , 421.57 , 489.30 , 555.31 , 621.92 , 687.86 , 753.63 , 819.42 , 883.50 , 948.99 , 1016.79 , 1081.44
+
         self.detect_query = rospy.Subscriber("/detection_query",String,
              self.query_callback , queue_size = 10)
 
@@ -72,6 +73,7 @@ class image_feature:
             CompressedImage, queue_size = 1)
         self.blades_pub = rospy.Publisher("/blades_location", String, queue_size = 40)
         self.subscriber = None # otherwise it doesnt work, as I need to resub each time that i got a query
+        ### Load images and get some features
         self.template = cv.imread(img_path + 'pattern.png')
         self.template = cv.cvtColor(self.template, cv.COLOR_BGR2GRAY)
         self.template = cv.Canny(self.template, canny_th[0], canny_th[1])
@@ -80,7 +82,9 @@ class image_feature:
         self.han_logo_h = np.size(self.han_logo,0)
         self.han_logo_w = np.size(self.han_logo,1)
         self.ess_logo_h = np.size(self.ess_logo,0)
-        self.ess_logo_w = np.size(self.ess_logo,1)        
+        self.ess_logo_w = np.size(self.ess_logo,1)
+        self.thread_list = []
+
 
     def query_callback(self, ros_data):
 
@@ -149,6 +153,17 @@ class image_feature:
             for blade_idx, blade in enumerate(grid):
                 #print("Grid n:" +str(grid_idx) +" Blade n: " + str(blade_idx) + " " + str(blade))
                 self.blades_pub.publish(str(blade))
+        print("Sorting finished")
+
+    def process_chunk(self, chunk, chunk_idx, chunk_size, chunk_time):
+        edges = cv.Canny(chunk, canny_th[0], canny_th[1],apertureSize = 3)
+        lines = cv.HoughLinesP(edges,1,np.pi/180,40,None,minLineLength,maxLineGap)
+        if lines is not None:
+            ctr   = match_template(self.template, chunk)
+            self.grid_ref[chunk_idx][0] += ctr[0]
+            self.grid_ref[chunk_idx][1] += ctr[1] + chunk_size*chunk_idx
+            get_lines(self,ctr,lines,chunk_idx,chunk_size)
+        print("Elapsed time for chunk %d, %.2f millis" %(chunk_idx, ((time.time() - chunk_time)*1000) ))
 
 
     def process_frames(self):
@@ -167,7 +182,7 @@ class image_feature:
             ### Camera distortion correction
             image = cv.undistort(image, K,d, None, newcamera)
             gray  = cv.cvtColor(image,cv.COLOR_BGR2GRAY)
-
+            self.thread_list = []
             image_chunks = np.vsplit(gray,chunk_factor)
             for chunk_idx, chunk in enumerate(image_chunks):
                 grid_ready = True
@@ -175,20 +190,17 @@ class image_feature:
                     if blade != LINES_PER_BLADE: grid_ready = False
                 if grid_ready: continue
                 chunk_time = time.time()    
-                edges = cv.Canny(chunk, canny_th[0], canny_th[1],apertureSize = 3)
-                lines = cv.HoughLinesP(edges,1,np.pi/180,40,None,minLineLength,maxLineGap)
-                if lines is not None:
-                    ctr   = match_template(self.template, chunk)
-                    self.grid_ref[chunk_idx][0] += ctr[0]
-                    self.grid_ref[chunk_idx][1] += ctr[1] + chunk_size*chunk_idx
-                    get_lines(self,ctr,lines,chunk_idx,chunk_size)
-                print("Elapsed time for chunk %d, %.2f millis" %(chunk_idx, ((time.time() - chunk_time)*1000) ))
+                thread = threading.Thread(target = self.process_chunk, args = (chunk, chunk_idx, chunk_size,chunk_time))
+                thread.start()
+                self.thread_list.append(thread)
+            for thread in self.thread_list:
+                thread.join()
             self.processed_frames += 1
             print("Elapsed time for frame %d, %.2f millis" %(self.processed_frames, ((time.time() - frame_time)*1000) ))
             print("Frames processed: " + str(self.processed_frames))
             detection_ready = True
             for idx, grid in enumerate(self.blade_count):
-                print(grid)
+                #print(grid)
                 for blade in grid:
                     if blade != LINES_PER_BLADE:
                         detection_ready = False                
