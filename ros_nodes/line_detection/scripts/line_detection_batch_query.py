@@ -35,7 +35,7 @@ px_to_mm = 0.1499 # pseudo empiric value
 
 # Macros for lines/blade sort
 LINES_PER_BLADE = 5
-FRAMES_NUMBER = 5
+FRAMES_NUMBER = 10
 BLADES_PER_GRID = 16 #CSPEC
 loc_th = 20
 
@@ -56,6 +56,7 @@ class image_feature:
         self.processed_frames = 0
         self.grid_ref = np.zeros((3,2))
         self.blades_ready = True
+        self.preproc_time = 0
         self.blade_lines        = [[[], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []],
                                    [[], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []],
                                    [[], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []]]
@@ -95,6 +96,7 @@ class image_feature:
             self.blade_count = np.zeros((3,16))
             self.processed_frames = 0
             self.store_frames = True
+            self.preproc_time = time.time()
             self.suscribe()
 
 
@@ -145,7 +147,7 @@ class image_feature:
 
         for grid_idx, grid in enumerate(blades_msg):
             for blade_idx, blade in enumerate(grid):
-                print("Grid n:" +str(grid_idx) +" Blade n: " + str(blade_idx) + " " + str(blade))
+                #print("Grid n:" +str(grid_idx) +" Blade n: " + str(blade_idx) + " " + str(blade))
                 self.blades_pub.publish(str(blade))
 
 
@@ -158,15 +160,21 @@ class image_feature:
         d = self.dist_coeff
         newcamera, roi = cv.getOptimalNewCameraMatrix(K,d,(w,h),0)
         ###
+       
         chunk_size = h / chunk_factor
         for image in self.frames:
+            frame_time = time.time()
             ### Camera distortion correction
             image = cv.undistort(image, K,d, None, newcamera)
             gray  = cv.cvtColor(image,cv.COLOR_BGR2GRAY)
 
             image_chunks = np.vsplit(gray,chunk_factor)
-
-            for chunk_idx, chunk in enumerate(image_chunks):    
+            for chunk_idx, chunk in enumerate(image_chunks):
+                grid_ready = True
+                for blade in self.blade_count[chunk_idx]:
+                    if blade != LINES_PER_BLADE: grid_ready = False
+                if grid_ready: continue
+                chunk_time = time.time()    
                 edges = cv.Canny(chunk, canny_th[0], canny_th[1],apertureSize = 3)
                 lines = cv.HoughLinesP(edges,1,np.pi/180,40,None,minLineLength,maxLineGap)
                 if lines is not None:
@@ -174,12 +182,20 @@ class image_feature:
                     self.grid_ref[chunk_idx][0] += ctr[0]
                     self.grid_ref[chunk_idx][1] += ctr[1] + chunk_size*chunk_idx
                     get_lines(self,ctr,lines,chunk_idx,chunk_size)
+                print("Elapsed time for chunk %d, %.2f millis" %(chunk_idx, ((time.time() - chunk_time)*1000) ))
+            self.processed_frames += 1
+            print("Elapsed time for frame %d, %.2f millis" %(self.processed_frames, ((time.time() - frame_time)*1000) ))
+            print("Frames processed: " + str(self.processed_frames))
+            detection_ready = True
             for idx, grid in enumerate(self.blade_count):
                 print(grid)
-            self.processed_frames += 1
-            print("Frames processed: " + str(self.processed_frames))
+                for blade in grid:
+                    if blade != LINES_PER_BLADE:
+                        detection_ready = False                
+            if detection_ready: break
 
         print("Detection finished")
+        print("Elapsed time for all frames %.2f millis" %((time.time() - self.preproc_time)*1000))
         ### save last frame
         image = self.frames[-1]
         ### empty frame buffer after processing
@@ -199,6 +215,7 @@ class image_feature:
             print("Not enough detected lines,Getting more frames...")       
             return
         else:
+            print("Elapsed time for detecting all grids %.2f millis" %((time.time() - self.preproc_time)*1000))
             self.unsub()
             self.blade_count = np.zeros((3,16))
             print("Enough lines per blade detected, calculating welding points")
