@@ -46,14 +46,17 @@ class laser_ctrl:
 		    image[0:self.ess_logo_h,0:w] = [255,255,255]    
 		if self.status:
 			cv.putText(image,str("ON"),(int(0.72*w + self.han_logo_w), self.han_logo_h - 25), font, 3,(0,0,255),3,cv.LINE_AA)
-			cv.drawMarker(image,(w/2,h/2),(0,0,255),cv.MARKER_CROSS ,40,1,cv.LINE_AA)
-			cv.circle(image,(w/2,h/2), 20,(0,0,255),1,cv.LINE_AA)		
+			cv.drawMarker(image,(w/2,h/2),(0,0,255),cv.MARKER_CROSS ,60,2,cv.LINE_AA)
+			cv.circle(image,(w/2,h/2), 30,(0,0,255),3,cv.LINE_AA)		
 		else:
 			cv.putText(image,str("OFF"),(int(0.72*w + self.han_logo_w), self.han_logo_h - 25), font, 3,(0,255,0),3,cv.LINE_AA)
-			cv.drawMarker(image,(w/2,h/2),(0,255,0),cv.MARKER_CROSS ,40,1,cv.LINE_AA)
-			cv.circle(    image,(w/2,h/2), 20,(0,255,0),1,cv.LINE_AA)
+			cv.drawMarker(image,(w/2,h/2),(0,255,0),cv.MARKER_CROSS ,60,2,cv.LINE_AA)
+			cv.circle(    image,(w/2,h/2), 30,(0,255,0),3,cv.LINE_AA)
 		image[0:self.han_logo_h,int(0.72*w):int(0.72*w + self.han_logo_w)] = self.han_logo
 		image[0:self.ess_logo_h,int(0.15*w):int(0.15*w + self.ess_logo_w)] = self.ess_logo
+		chunk_size = h /3 
+		cv.line(image, (0, chunk_size*1), (w, chunk_size*1), (0, 255, 255), 1, cv.LINE_AA)
+		cv.line(image, (0, chunk_size*2), (w, chunk_size*2), (0, 255, 255), 1, cv.LINE_AA)
 		cv.putText(image,str("MG Welder Robot : Han Solo"),(420,40), font, 1,(0,0,0),3,cv.LINE_AA)
 		msg = CompressedImage()
 		msg.header.stamp = rospy.Time.now()

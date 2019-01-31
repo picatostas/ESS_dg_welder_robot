@@ -56,6 +56,7 @@ class image_feature:
         self.store_frames = False
         self.processed_frames = 0
         self.grid_ref = np.zeros((3,2))
+        self.marker_count = np.zeros(3)
         self.blades_ready = True
         self.preproc_time = 0
         self.blade_lines        = [[[], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []],
@@ -150,24 +151,28 @@ class image_feature:
                 blades_msg[grid_idx][blade_idx].append('%.2f' % (( self.grid_ref[grid_idx][1] - line_avg[3] )*px_to_mm ))
 
         for grid_idx, grid in enumerate(blades_msg):
+            #self.blades_pub.publish(str("Grid " + str(grid_idx + 1)))
             for blade_idx, blade in enumerate(grid):
-                #print("Grid n:" +str(grid_idx) +" Blade n: " + str(blade_idx) + " " + str(blade))
                 self.blades_pub.publish(str(blade))
-        print("Sorting finished")
+        #print("Sorting finished")
 
     def process_chunk(self, chunk, chunk_idx, chunk_size, chunk_time):
+        #print("Thread " + str(chunk_idx) + " started")
         edges = cv.Canny(chunk, canny_th[0], canny_th[1],apertureSize = 3)
         lines = cv.HoughLinesP(edges,1,np.pi/180,40,None,minLineLength,maxLineGap)
         if lines is not None:
             ctr   = match_template(self.template, chunk)
+            #print ctr
             self.grid_ref[chunk_idx][0] += ctr[0]
-            self.grid_ref[chunk_idx][1] += ctr[1] + chunk_size*chunk_idx
+            self.grid_ref[chunk_idx][1] += ctr[1] #+ chunk_size*chunk_idx
+            # To keep track of how many times the chunk has been processed
+            self.marker_count[chunk_idx] += 1
             get_lines(self,ctr,lines,chunk_idx,chunk_size)
         print("Elapsed time for chunk %d, %.2f millis" %(chunk_idx, ((time.time() - chunk_time)*1000) ))
 
 
     def process_frames(self):
-        print(" Frames received : " + str(len(self.frames)))
+        print("Frames received : " + str(len(self.frames)))
         ### All the frames are equal and share the same distortion parameters
         h = np.size(self.frames[0],0)
         w = np.size(self.frames[0],1)
@@ -185,28 +190,32 @@ class image_feature:
             self.thread_list = []
             image_chunks = np.vsplit(gray,chunk_factor)
             for chunk_idx, chunk in enumerate(image_chunks):
+                # Stop processing that chunk if grid has been already detected 
                 grid_ready = True
                 for blade in self.blade_count[chunk_idx]:
                     if blade != LINES_PER_BLADE: grid_ready = False
                 if grid_ready: continue
+                # Time stamp for each chunck
                 chunk_time = time.time()    
                 thread = threading.Thread(target = self.process_chunk, args = (chunk, chunk_idx, chunk_size,chunk_time))
                 thread.start()
                 self.thread_list.append(thread)
+            # Wait for all threads to finish before moving to next frame
             for thread in self.thread_list:
                 thread.join()
             self.processed_frames += 1
+
             print("Elapsed time for frame %d, %.2f millis" %(self.processed_frames, ((time.time() - frame_time)*1000) ))
-            print("Frames processed: " + str(self.processed_frames))
+            #print("Frames processed: " + str(self.processed_frames))
+            # Stop processing frames if detection ready
             detection_ready = True
             for idx, grid in enumerate(self.blade_count):
-                #print(grid)
                 for blade in grid:
                     if blade != LINES_PER_BLADE:
                         detection_ready = False                
             if detection_ready: break
 
-        print("Detection finished")
+        #print("Detection finished")
         print("Elapsed time for all frames %.2f millis" %((time.time() - self.preproc_time)*1000))
         ### save last frame
         image = self.frames[-1]
@@ -223,7 +232,6 @@ class image_feature:
 
         if enough_lines is False:
             ## get more frames
-
             print("Not enough detected lines,Getting more frames...")       
             return
         else:
@@ -231,8 +239,10 @@ class image_feature:
             self.unsub()
             self.blade_count = np.zeros((3,16))
             print("Enough lines per blade detected, calculating welding points")
-            self.grid_ref /= self.processed_frames
-            print(self.grid_ref)
+            for i, marker in enumerate(self.grid_ref):
+                marker /= self.marker_count[i]
+            self.marker_count = np.zeros(3)
+            #print(self.grid_ref)
             self.sort_lines()
 
             ## Draw lines and markers location 
@@ -241,8 +251,8 @@ class image_feature:
                         cv.line(image, (int(blade[0]),int(blade[1]) +chunk_size*chunk_idx ), (int(blade[2]),int(blade[3]) + chunk_size*chunk_idx), (200, 0, 200), 2, cv.LINE_AA)
 
             for idx, ctr in enumerate(self.grid_ref):            
-                cv.drawMarker(image,(int(ctr[0]),int(ctr[1])),(0,255,0),cv.MARKER_CROSS ,40,1,cv.LINE_AA)
-                cv.circle(    image,(int(ctr[0]),int(ctr[1])), 20, (0,255,0),1,cv.LINE_AA)
+                cv.drawMarker(image,(int(ctr[0]),int(ctr[1])+ chunk_size*idx),(0,255,0),cv.MARKER_CROSS ,60,2,cv.LINE_AA)
+                cv.circle(    image,(int(ctr[0]),int(ctr[1])+ chunk_size*idx), 30, (0,255,0),2,cv.LINE_AA)
 
             ### IMAGE HEADER    
             if self.han_logo_h > self.ess_logo_h:
