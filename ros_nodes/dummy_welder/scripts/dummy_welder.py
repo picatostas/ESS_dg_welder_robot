@@ -5,15 +5,15 @@ import sys, time
 import roslib 
 import rospy
 import numpy as np
-from std_msgs.msg import String
-from geometry_msgs.msg import Twist
-from rospy.numpy_msg import numpy_msg
-from rospy_tutorials.msg import Floats
+from   std_msgs.msg        import String
+from   geometry_msgs.msg   import Twist
+from   rospy.numpy_msg     import numpy_msg
+from   rospy_tutorials.msg import Floats
 import re
 
 from fsm import fsm, fsm_trans
 from welder_fsm import welder_fsm_new
-from laser_fsm import laser_fsm_new
+from laser_fsm  import laser_fsm_new
 
 def main(args):
 
@@ -22,7 +22,7 @@ def main(args):
 	laser_status_query_pub = rospy.Publisher('/laser_ctrl/status_query', String, queue_size = 10)
 	rospy.init_node('dummy_welder', anonymous = False)
 
-	rate = rospy.Rate(10)
+	rate = rospy.Rate(100)
 
 	while not rospy.is_shutdown():
 		msg = 'q'
@@ -33,8 +33,6 @@ def main(args):
 
 	rospy.spin()
 #main
-
-
 
 if __name__ == '__main__':
     main(sys.argv)

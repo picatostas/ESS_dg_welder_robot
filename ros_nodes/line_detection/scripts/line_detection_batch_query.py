@@ -35,15 +35,6 @@ chunk_factor = 3 # as the camera only frames 3 grids at a time
 image_chunks = []
 img_path = '/home/multigrid/catkin_ws/src/line_detection/scripts/'
 font = cv.FONT_HERSHEY_SIMPLEX
-#class cvThread(threading.Thread):
-#    def __init__(self,threadID, name, func):
-#        threading.Thread.__init__(self)
-#        self.ThreadID = threadID
-#        self.name = name
-#        self.func = func
-#    def run(self):
-#        self.func()
-
 
 class image_feature:
 
@@ -153,7 +144,10 @@ class image_feature:
         for grid_idx, grid in enumerate(blades_msg):
             #self.blades_pub.publish(str("Grid " + str(grid_idx + 1)))
             for blade_idx, blade in enumerate(grid):
-                self.blades_pub.publish(str(blade))
+                message = "G:" + str(grid_idx) + " B:" + str(blade_idx) +" "+ str(blade)
+                self.blades_pub.publish(message)
+            rospy.sleep(0.1)
+                #print()
         #print("Sorting finished")
 
     def process_chunk(self, chunk, chunk_idx, chunk_size, chunk_time):
@@ -168,7 +162,7 @@ class image_feature:
             # To keep track of how many times the chunk has been processed
             self.marker_count[chunk_idx] += 1
             get_lines(self,ctr,lines,chunk_idx,chunk_size)
-        print("Elapsed time for chunk %d, %.2f millis" %(chunk_idx, ((time.time() - chunk_time)*1000) ))
+        #print("Elapsed time for chunk %d, %.2f millis" %(chunk_idx, ((time.time() - chunk_time)*1000) ))
 
 
     def process_frames(self):

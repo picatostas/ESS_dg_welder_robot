@@ -9,7 +9,7 @@ laser_states = {"LASER_OFF" : "0",
 
 def next_is_blade():
 
-	return (robot.next_is_blade and robot.laser_sync)
+	return     (robot.next_is_blade and robot.laser_sync)
 	#if robot.next_is_blade:
 	#	return True
 	#return False
@@ -25,14 +25,14 @@ def next_is_not_blade():
 
 def send_turn_on():
 	print("LASER_FSM: Sending ON Command")
-	robot.laser_cmd = True
+	robot.laser_cmd  = True
 	robot.laser_sync = False
 	robot.laser_pub.publish('f')
 
 
 def send_turn_off():
 	print("LASER_FSM: Sending OFF Command")
-	robot.laser_cmd = False
+	robot.laser_cmd  = False
 	robot.laser_sync = False
 	robot.laser_pub.publish('s')
 

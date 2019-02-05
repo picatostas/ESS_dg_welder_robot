@@ -207,9 +207,12 @@ class XYZ:
 		while True:
 			status = self.s.readline()
 			if status is not None:
-				matches = self.__pos_pattern__.findall(status)
-				if len(matches[1]) == 3:
-					self.pos = list(matches[1])				
-				return status
-				#self.idle = status.startswith('<Idle')
+				try:
+					matches = self.__pos_pattern__.findall(status)
+					#if matches is not None:
+					if len(matches[1]) == 3:
+						self.pos = list(matches[1])				
+					return status
+				except IndexError:
+					print("No matches found in serial")
 			else: break
