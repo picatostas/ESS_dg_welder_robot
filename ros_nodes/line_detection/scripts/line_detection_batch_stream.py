@@ -40,20 +40,29 @@ class image_feature:
     def __init__(self):
         # topic where we publish
         self.ready = True
-        #### values for 1280x960 default
-        self.camera_matrix = np.array([[1014.343103379204, 0, 637.2463708126373],[0, 1011.69373183754, 469.5663779911617],[0.0, 0.0, 1.0]])
-        self.dist_coeff    = np.array([0.1570058008946036, -0.2862704919204555, -5.60164774255961e-05, 0.001586362091473342, 0])   
+        self.camera_matrix = 0 
+        self.dist_coeff    = 0 
         self.image_pub = rospy.Publisher("/lines_detected/compressed",
             CompressedImage, queue_size = 1)
 
         self.subscriber = rospy.Subscriber("/raspicam_node/image/compressed",
             CompressedImage, self.frame_callback,  queue_size = 10)
 
+        self.info_sub = rospy.Subscriber("/raspicam_node/camera_info",
+            CameraInfo, self.info_callback,  queue_size = 1)  
+
         self.template = cv.imread('/home/multigrid/catkin_ws/src/line_detection/scripts/pattern.png')
         self.template = cv.cvtColor(self.template, cv.COLOR_BGR2GRAY)
         self.template = cv.Canny(self.template, lowTh, HighTh)
         self.han_logo = cv.imread('/home/multigrid/catkin_ws/src/line_detection/scripts/han100.png')
         self.ess_logo = cv.imread('/home/multigrid/catkin_ws/src/line_detection/scripts/ess100.png')
+        
+    def info_callback(self, ros_data):
+           self.camera_matrix = np.reshape(ros_data.K,(3,3))
+           self.dist_coeff = ros_data.D
+           print("Camera Matrix:\n" + str(self.camera_matrix))
+           print("Distortion Coeffs:\n" + str(self.dist_coeff))       
+           self.info_sub.unregister()
 
 
     def frame_callback(self, ros_data):
@@ -66,7 +75,7 @@ class image_feature:
         K = self.camera_matrix
         d = self.dist_coeff
         newcamera, roi = cv.getOptimalNewCameraMatrix(K,d,(w,h),0)
-        image = cv.undistort(image, K,d, None, newcamera)
+        #image = cv.undistort(image, K,d, None, newcamera)
         gray  = cv.cvtColor(image,cv.COLOR_BGR2GRAY)
         canny = cv.Canny(gray, lowTh, HighTh,apertureSize = 3)
         image_chunks = np.vsplit(gray,chunk_factor)
@@ -91,8 +100,8 @@ class image_feature:
             if idx != len(image_chunks):
                 cv.line(image, (0, chunk_size*idx), (w, chunk_size*idx), (0, 255, 255), 1, cv.LINE_AA)
 
-        cv.imshow('canny',canny)
-        cv.waitKey(2)
+        #cv.imshow('canny',canny)
+        #cv.waitKey(2)
 
 
         ### IMAGE HEADER 
