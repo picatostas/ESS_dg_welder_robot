@@ -16,34 +16,36 @@ line_regex = re.compile('(\-?\d+\.\d+)')
 class welder:
 	def __init__(self):
 		# subscriber handlers
-		self.blade_loc_sub          = rospy.Subscriber('/blades_location'       ,String,         self.traj_clbk, queue_size  = 100,
+		self.blade_loc_sub          = rospy.Subscriber('/line_detection/blades_location'       ,String,         self.traj_clbk, queue_size  = 100,
 																							    buff_size = 400)#, tcp_nodelay = True)
 		self.cnc_pos_sub            = rospy.Subscriber('/cnc_interface/position', Twist,      self.cnc_pos_clbk, queue_size  = 10)
 		self.laser_status_sub       = rospy.Subscriber('/laser_ctrl/status'     ,String, self.laser_status_clbk, queue_size  = 10)
-		self.start_sub              = rospy.Subscriber('/welder/start'          ,String,        self.start_clbk, queue_size  = 10)
+		self.start_sub              = rospy.Subscriber('/welder/cmd'            ,String,          self.cmd_clbk, queue_size  = 10)
 		# publisher handlers
-		self.laser_pub              = rospy.Publisher('/laser_ctrl/cmd', String, queue_size = 10)
-		self.cnc_pub                = rospy.Publisher('/cnc_cmd',         Twist, queue_size = 10)
-		self.line_query_pub         = rospy.Publisher('/detection_query',String, queue_size = 10)
-		self.GRIDS_TO_PROCESS 		= 6
+		self.laser_pub              = rospy.Publisher('/laser_ctrl/cmd',     String, queue_size = 10)
+		self.cnc_pub                = rospy.Publisher('/cnc_interface/cmd',   Twist, queue_size = 10)
+		self.cnc_stop_pub	 		= rospy.Publisher('/cnc_interface/stop', String, queue_size =  1)
+		self.line_query_pub         = rospy.Publisher('line_detection/query',String, queue_size = 10)
+		self.welder_progress_pub	= rospy.Publisher('/welder/progress'    ,String, queue_size = 10)
+		self.GRIDS_TO_PROCESS 		=  6
 		self.LINES_PER_BLADE		= 16
 		# reference points Template
-		self.grid_refs      = [[445.20, 161.30, 30.00], # [0]  center point 0   [2]    
-						       [445.20, 201.30, 30.00], # [1]  center point 0   [1]
-						       [445.20, 241.30, 30.00], # [2]  center point 0   [0]
-						       [445.20, 281.30, 30.00], # [3]  center point 1   [2]
-						       [445.20, 321.30, 30.00], # [4]  center point 1   [1]
-						       [445.20, 361.30, 30.00], # [5]  center point 1/2 [0][2]
-						       [445.20, 401.30, 30.00], # [6]  center point 2   [1]
-						       [445.20, 441.30, 30.00], # [7]  center point 2   [2]
-						       [198.00, 439.90, 30.00], # [8]  center point 3   [0]
-						       [197.80, 399.90, 30.00], # [9]  center point 3   [1]
-						       [197.80, 359.90, 30.00], # [10] center point 3   [2]
-						       [197.80, 320.30, 30.00], # [11] center point 4   [0]
-						       [197.80, 280.30, 30.00], # [12] center point 4   [1]
-						       [197.60, 240.30, 30.00], # [13] center point 4/5 [2][0]
-						       [197.60, 200.30, 30.00], # [14] center point 5   [1]
-							   [197.60, 159.90, 30.00]] # [15] center point 5   [2]
+		self.grid_refs      = [[440.00, 163.40, 30.00], # [0]  center point 0   [2]    
+						       [440.00, 203.40, 30.00], # [1]  center point 0   [1]
+						       [440.00, 243.40, 30.00], # [2]  center point 0   [0]
+						       [440.00, 283.40, 30.00], # [3]  center point 1   [2]
+						       [440.00, 323.40, 30.00], # [4]  center point 1   [1]
+						       [440.00, 363.40, 30.00], # [5]  center point 1/2 [0][2]
+						       [440.00, 403.40, 30.00], # [6]  center point 2   [1]
+						       [440.00, 443.40, 30.00], # [7]  center point 2   [2]
+						       [193.50, 442.30, 30.00], # [8]  center point 3   [0]
+						       [193.50, 402.30, 30.00], # [9]  center point 3   [1]
+						       [193.50, 362.30, 30.00], # [10] center point 3   [2]
+						       [193.50, 322.30, 30.00], # [11] center point 4   [0]
+						       [193.50, 282.30, 30.00], # [12] center point 4   [1]
+						       [193.50, 242.30, 30.00], # [13] center point 4/5 [2][0]
+						       [193.50, 202.30, 30.00], # [14] center point 5   [1]
+							   [193.50, 162.90, 30.00]] # [15] center point 5   [2]
 
 		self.center_points  = [[362.00, 210.70, 30.00],
 							   [362.00, 330.70, 30.00],
@@ -56,6 +58,7 @@ class welder:
 		self.detect_time	= 0
 		self.detect_time_en	= True 
 		self.welding_time	= 0
+		self.overall_time	= 0
 
 		self.cnc_pos        = [0.0, 0.0, 0.0]
 		# boolean variables for fsm
@@ -64,13 +67,15 @@ class welder:
 		self.laser_status   = False
 		self.laser_cmd      = False
 		self.laser_sync     = True
+		self.pub_time  		= False
 		# traj related variables
 		self.last_point     = [0.0, 0.0, 0.0]
 		self.received_traj  = []
 		self.traj_completed = False
 		self.traj_received  = False
 		self.grid_count	    = 0
-		self.weld_idx		= 0 
+		self.weld_idx		= 0
+		self.blade_count	= 0 
 		self.detect_idx		= 0
 		self.traj 			= []
 
@@ -82,13 +87,22 @@ class welder:
 		elif msg == '0':#stop
 			self.laser_status = False		
 
-	def start_clbk(self,ros_data):
+	def cmd_clbk(self,ros_data):
 
 		char = ros_data.data
-		if char == 's':
+		if char == '1':
 			self.start 		    = True
+			self.stop 			= False
 			self.detect_idx     = 0
 			self.detect_time_en = True
+			self.traj_completed = False
+			self.traj_received  = False
+
+		elif char == '0':
+			self.start 		    = False
+			self.stop 			= True
+			self.detect_idx     = 0
+			self.detect_time_en = False
 			self.traj_completed = False
 			self.traj_received  = False
 
@@ -119,7 +133,6 @@ class welder:
 					print("Already stored grid, skip")
 
 			self.received_traj = []
-
 			print("Grids received: %d , detection idx: %d "%(len(self.traj),self.detect_idx)) 
 			print("Overall time: %.2f s , detection time: %.2f s"%((time.time() - self.start_time),
 																   (time.time() - self.detect_time)))
@@ -135,19 +148,15 @@ class welder:
 				print("traj of %d grids %d blades %d points"%(len(self.traj),
 															  len(self.traj[0]),
 															  len(self.traj[0][0])))
-				#print self.traj[0]
-				#print self.traj[0][0]
-				#print self.traj[0][0][0]		
-
 	def make_twist(self,p):
 
 		point = Twist()
 		point.linear.x  = p[0]
 		point.linear.y  = p[1]
 		point.linear.z  = p[2]
-		point.angular.x = 0.0
-		point.angular.y = 0.0
-		point.angular.z = 0.0
+		point.angular.x =  0.0
+		point.angular.y =  0.0
+		point.angular.z =  0.0
 	
 		return point
 

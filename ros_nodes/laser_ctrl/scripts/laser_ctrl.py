@@ -5,25 +5,34 @@ import numpy as np
 import cv2 as cv 
 import roslib 
 import rospy
-from sensor_msgs.msg import CompressedImage
+from sensor_msgs.msg import CompressedImage, CameraInfo
 from std_msgs.msg import String
 font = cv.FONT_HERSHEY_SIMPLEX
-img_path = '/home/multigrid/catkin_ws/src/line_detection/scripts/'
+
+
+color_palette = {"red"    : (  0,  0,255),
+	             "blue"   : (255,  0,  0),
+	             "green"  : (  0,255,  0),
+	             "purple" : (255,  0,255)}
+
 class laser_ctrl:
 
 	def __init__(self):
 		self.location_pub  = rospy.Publisher("/laser_ctrl/img_feed/compressed", CompressedImage, queue_size = 1)
-		self.image_sub     = rospy.Subscriber("/raspicam_node/image/compressed",CompressedImage,self.image_callback, queue_size = 10)
 		self.laser_status  = rospy.Subscriber("/laser_ctrl/status",String, self.cmd_callback, queue_size = 10)
+		self.image_sub     = rospy.Subscriber("/raspicam_node/image/compressed",CompressedImage,self.image_callback, queue_size = 10)
+		self.info_sub      = rospy.Subscriber("/raspicam_node/camera_info",
+			CameraInfo, self.info_callback,  queue_size = 1)
 		self.status        = False
-		self.camera_matrix = np.array([[1014.343103379204, 0, 637.2463708126373],[0, 1011.69373183754, 469.5663779911617],[0.0, 0.0, 1.0]])
-		self.dist_coeff    = np.array([0.1570058008946036, -0.2862704919204555, -5.60164774255961e-05, 0.001586362091473342, 0])		
-		self.han_logo = cv.imread(img_path + 'han100.png')
-		self.ess_logo = cv.imread(img_path + 'ess100.png')
-		self.han_logo_h = np.size(self.han_logo,0)
-		self.han_logo_w = np.size(self.han_logo,1)
-		self.ess_logo_h = np.size(self.ess_logo,0)
-		self.ess_logo_w = np.size(self.ess_logo,1)  
+		self.camera_matrix = 0 
+		self.dist_coeff    = 0
+		self.marker_color  = 0 
+
+	def info_callback(self, ros_data):
+		self.camera_matrix = np.reshape(ros_data.K,(3,3))
+		self.dist_coeff = ros_data.D  
+		self.info_sub.unregister()
+
 	def cmd_callback(self,ros_data):
 		msg = ros_data.data
 		if   msg == '1':#fire
@@ -40,27 +49,14 @@ class laser_ctrl:
 		d = self.dist_coeff
 		newcamera, roi = cv.getOptimalNewCameraMatrix(K,d,(w,h),0)
 		image = cv.undistort(image, K,d, None, newcamera)
-		if self.han_logo_h > self.ess_logo_h:
-		    image[0:self.han_logo_h,0:w] = [255,255,255]
+
+		if self.status:
+			self.marker_color = color_palette['red']		
 		else:
-		    image[0:self.ess_logo_h,0:w] = [255,255,255]
-		#cv.putText(image,str("ON"),(int(0.72*w + self.han_logo_w), self.han_logo_h - 25), font, 3,(0,0,255),3,cv.LINE_AA)
-		cv.drawMarker(image,(w/2,h/2),(200,0,200),cv.MARKER_CROSS ,60,1,cv.LINE_AA)
-		cv.circle(image,(w/2,h/2), 30,(200,0,200),3,cv.LINE_AA)	    
-		#if self.status:
-		#	cv.putText(image,str("ON"),(int(0.72*w + self.han_logo_w), self.han_logo_h - 25), font, 3,(0,0,255),3,cv.LINE_AA)
-		#	cv.drawMarker(image,(w/2,h/2),(0,0,255),cv.MARKER_CROSS ,60,1,cv.LINE_AA)
-		#	cv.circle(image,(w/2,h/2), 30,(0,0,255),3,cv.LINE_AA)		
-		#else:
-		#	cv.putText(image,str("OFF"),(int(0.72*w + self.han_logo_w), self.han_logo_h - 25), font, 3,(0,255,0),3,cv.LINE_AA)
-		#	cv.drawMarker(image,(w/2,h/2),(0,255,0),cv.MARKER_CROSS ,60,1,cv.LINE_AA)
-		#	cv.circle(    image,(w/2,h/2), 30,(0,255,0),3,cv.LINE_AA)
-		image[0:self.han_logo_h,int(0.72*w):int(0.72*w + self.han_logo_w)] = self.han_logo
-		image[0:self.ess_logo_h,int(0.15*w):int(0.15*w + self.ess_logo_w)] = self.ess_logo
-		chunk_size = h /3 
-		cv.line(image, (0, chunk_size*1), (w, chunk_size*1), (0, 0, 255), 3, cv.LINE_AA)
-		cv.line(image, (0, chunk_size*2), (w, chunk_size*2), (0, 0, 255), 3, cv.LINE_AA)
-		cv.putText(image,str("MG Welder Robot : Han Solo"),(420,40), font, 1,(0,0,0),3,cv.LINE_AA)
+			self.marker_color = color_palette['green']
+		self.marker_color = color_palette['purple']
+		cv.drawMarker(image,(w/2,h/2),self.marker_color,cv.MARKER_CROSS ,60,3,cv.LINE_AA)
+		cv.circle(image,(w/2,h/2), 30,self.marker_color,3,cv.LINE_AA)	    
 		msg = CompressedImage()
 		msg.header.stamp = rospy.Time.now()
 		msg.format = "jpeg"

@@ -10,17 +10,11 @@ laser_states = {"LASER_OFF" : "0",
 def next_is_blade():
 
 	return     (robot.next_is_blade and robot.laser_sync)
-	#if robot.next_is_blade:
-	#	return True
-	#return False
 
 
 def next_is_not_blade():
 
 	return (not robot.next_is_blade and robot.laser_sync)
-	#if robot.next_is_blade:
-	#	return False
-	#return True
 
 
 def send_turn_on():

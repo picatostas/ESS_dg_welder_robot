@@ -11,17 +11,17 @@ import cv2 as cv
 import roslib, rospy, imutils
 import matplotlib.pyplot as plt
 # Ros Messages
-from sensor_msgs.msg import CompressedImage, CameraInfo, Image
-from std_msgs.msg import String
-from rospy.numpy_msg import numpy_msg
+from sensor_msgs.msg     import CompressedImage, CameraInfo, Image
+from std_msgs.msg        import String
+from rospy.numpy_msg     import numpy_msg
 from rospy_tutorials.msg import Floats
 #Houglines detection threshold values in px
 minLineLength = 10
 maxLineGap    = 30
 #canny detection variables
 loc_th   = 20
-len_th   = [60,75]
-dst_th   = [30,60]
+len_th   = [60, 75]
+dst_th   = [30, 60]
 canny_th = [50,300]# 300 for real grid, 200 for template
 slope_th = 0.1     # threshold value for considering vertical lines, in rads 0.044
 px_to_mm = 0.1499  # pseudo empiric value
@@ -54,18 +54,20 @@ class image_feature:
                                    [[], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []]]
         self.blade_lines_sorted = self.blade_lines
         self.blade_count        = np.zeros((3,16))
+        self.count_mask         = np.zeros((3,16))
+        self.count_mask[:] = LINES_PER_BLADE
         ## This values are in pixes for 1080x960 res and a camera position of z30 and aprox 154 mm from grid 
-        self.blade_loc    = [89.58, 153.81, 221.76, 285.96,
-                             354.84, 421.57, 489.30, 555.31,
-                             621.92, 687.86, 753.63, 819.42,
+        self.blade_loc    = [ 89.58, 153.81,  221.76,  285.96,
+                             354.84, 421.57,  489.30,  555.31,
+                             621.92, 687.86,  753.63,  819.42,
                              883.50, 948.99, 1016.79, 1081.44]
 
-        self.detect_query = rospy.Subscriber("/detection_query",String,
+        self.detect_query = rospy.Subscriber("line_detection/query",String,
             self.query_callback , queue_size = 10)
 
-        self.image_pub    = rospy.Publisher("/lines_detected/compressed",
+        self.image_pub    = rospy.Publisher("/line_detection/Image/compressed",
             CompressedImage, queue_size = 1)
-        self.blades_pub   = rospy.Publisher("/blades_location", String, queue_size = 40)
+        self.blades_pub   = rospy.Publisher("/line_detection/blades_location", String, queue_size = 48)
         self.subscriber   = None # otherwise it doesnt work, as I need to resub each time that i got a query
         ### Load images and get some features
         self.info_sub     = rospy.Subscriber("/raspicam_node/camera_info",
@@ -152,27 +154,27 @@ class image_feature:
 
     def process_chunk(self, chunk, chunk_idx, chunk_size, chunk_time):
         #print("Thread " + str(chunk_idx) + " started")
-        canny_time = time.time()
+        #canny_time = time.time()
         edges = cv.Canny(chunk, canny_th[0], canny_th[1],apertureSize = 3)
-        hough_time = time.time()
-        print("Canny time %.2f ms"%((hough_time - canny_time)*1000))
+        #hough_time = time.time()
+        #print("Canny time %.2f ms"%((hough_time - canny_time)*1000))
         lines = cv.HoughLinesP(edges,1,np.pi/180,40,None,minLineLength,maxLineGap)
-        print("Hough time %.2f ms"%((time.time() - hough_time)*1000))
+        #print("Hough time %.2f ms"%((time.time() - hough_time)*1000))
         if lines is not None:
             if self.get_ctr:
-                template_time = time.time()
+                #template_time = time.time()
                 ctr   = match_template(self.template, chunk)
                 #print ctr
                 self.grid_ref[chunk_idx][0] = ctr[0]
                 self.grid_ref[chunk_idx][1] = ctr[1]
                 self.get_ctr = False
-                print("Template time %.2f ms"%((time.time() - template_time)*1000))
+                #print("Template time %.2f ms"%((time.time() - template_time)*1000))
             # To keep track of how many times the chunk has been processed
             #self.marker_count[chunk_idx] += 1
-            lines_time = time.time()
+            #lines_time = time.time()
             get_lines(self,lines,chunk_idx,chunk_size)
-            print("Lines time %.2f ms"%((time.time() - lines_time)*1000))
-        print("Elapsed time for chunk %d, %.2f ms" %(chunk_idx, ((time.time() - chunk_time)*1000) ))
+            #print("Lines time %.2f ms"%((time.time() - lines_time)*1000))
+        #print("Elapsed time for chunk %d, %.2f ms" %(chunk_idx, ((time.time() - chunk_time)*1000) ))
 
 
     def process_frames(self):
@@ -200,27 +202,29 @@ class image_feature:
                     if blade != LINES_PER_BLADE: grid_ready = False
                 if grid_ready: continue
                 # Time stamp for each chunck
-                chunk_time = time.time()    
+                #chunk_time = time.time()   
+                chunk_time = 0 
                 thread = threading.Thread(target = self.process_chunk, args = (chunk, chunk_idx, chunk_size,chunk_time))
                 thread.start()
                 self.thread_list.append(thread)
             # Wait for all threads to finish before moving to next frame
+            #join_time = time.time()
             for thread in self.thread_list:
                 thread.join()
             self.processed_frames += 1
-
-            print("Elapsed time for frame %d, %.2f ms" %(self.processed_frames, ((time.time() - frame_time)*1000) ))
+            #print("Join time %.2f ms"%((time.time() - join_time)*1000))
+            #print("Elapsed time for frame %d, %.2f ms" %(self.processed_frames, ((time.time() - frame_time)*1000) ))
             #print("Frames processed: " + str(self.processed_frames))
             # Stop processing frames if detection ready
             detection_ready = True
             for idx, grid in enumerate(self.blade_count):
                 for blade in grid:
                     if blade != LINES_PER_BLADE:
-                        detection_ready = False                
+                        detection_ready = False       
             if detection_ready: break
 
         #print("Detection finished")
-        print("Elapsed time for all frames %.2f ms" %((time.time() - self.preproc_time)*1000))
+        print("Elapsed time for %d frames %.2f ms" %(self.processed_frames,(time.time() - self.preproc_time)*1000))
         ### save last frame
         image = self.frames[-1]
         ### empty frame buffer after processing

@@ -15,44 +15,44 @@ class XYZ:
 	
 	def __init__(self):
 		self.cncStateTopic = rospy.Publisher('/cnc_interface/state', String, queue_size = 10)
-		self.s = None				# serial port object
-		self.abs_move = None		# GRBL has 2 movement modes, relative and absolute
-		self.defaultSpeed = 1000	# mm per min
-		self.baudrate = 115200
+		self.s 		      =   None	# serial port object
+		self.abs_move     =   None	# GRBL has 2 movement modes, relative and absolute
+		self.defaultSpeed =   1000	# mm per min
+		self.baudrate 	  = 115200
 		self.port = '/dev/ttyACM0'
-		self.wait_resp = False
-		self.acceleration = 1000
-		self.x_max = 500
-		self.y_max = 500
-		self.z_max = 100
-		self.x_max_speed = 2000
-		self.y_max_speed = 2000
-		self.z_max_speed = 2000
-		self.x_steps_mm = 2560
-		self.y_steps_mm = 2560
-		self.z_steps_mm = 5000
-		self.idle = True	
+		self.wait_resp 	  =  False
+		self.acceleration =   1000
+		self.x_max        =    500
+		self.y_max        =    500
+		self.z_max        =    100
+		self.x_max_speed  =   2000
+		self.y_max_speed  =   2000
+		self.z_max_speed  =   2000
+		self.x_steps_mm   =   2560
+		self.y_steps_mm   =   2560
+		self.z_steps_mm   =   5000
+		self.idle 		  =   True	
 		# vectors follow the format [X, Y, Z] where Z is assumed to be vertical
 		# number of steps per centimeter in each dimension
-		self.pos = [0.0, 0.0, 0.0]		   # current position
+		self.pos     = [0.0, 0.0, 0.0]		   # current position
 		self.angular = [0.0, 0.0, 0.0]
-		self.origin = [0.0, 0.0, 0.0]		# minimum coordinates
-		self.limits = [self.x_max, self.y_max, self.z_max]	 # maximum coordinates
+		self.origin  = [0.0, 0.0, 0.0]		# minimum coordinates
+		self.limits  = [self.x_max, self.y_max, self.z_max]	 # maximum coordinates
 	
 	def startup(self, acc, maxx, maxy,maxz,spdx, spdy, spdz, stepsx, stepsy, stepsz):
 		""" initiate connection to the microcontroller """
 		#self.baudrate = baud
 		#self.port = port
-		self.acceleration = acc
-		self.x_max = maxx
-		self.y_max = maxy
-		self.z_max = maxz
-		self.x_max_speed = spdx
-		self.y_max_speed = spdy
-		self.z_max_speed = spdz
-		self.x_steps_mm = stepsx
-		self.y_steps_mm = stepsy
-		self.z_steps_mm = stepsz
+		self.acceleration =    acc
+		self.x_max        =   maxx
+		self.y_max        =   maxy
+		self.z_max        =   maxz
+		self.x_max_speed  =   spdx
+		self.y_max_speed  =   spdy
+		self.z_max_speed  =   spdz
+		self.x_steps_mm   = stepsx
+		self.y_steps_mm   = stepsy
+		self.z_steps_mm   = stepsz
 		self.s = serial.Serial(self.port, self.baudrate)
 		#self.s = serial.Serial('/dev/ttyACM0',115200)
 
@@ -89,6 +89,20 @@ class XYZ:
 		self.s.write("$H\n")
 		self.s.readline()
 		self.pos = list(self.origin)
+
+	def enableSteppers(self):
+		try:
+			self.s.write("M17\n")
+			self.s.readline()
+		except:
+			print("Serial port unavailable")	
+
+	def disableSteppers(self):
+		try:
+			self.s.write("M18\n")
+			self.s.readline()
+		except:
+			print("Serial port unavailable")
 	
 	def moveTo(self, x=None, y=None, z=None, speed=None, blockUntilComplete=True):
 		""" move to an absolute position, and return when movement completes """
@@ -116,10 +130,11 @@ class XYZ:
 
 		gcode += ' F' + str(speed)
 		gcode += '\n'
-		
-		self.s.write(gcode)
-		self.s.readline()
-		
+		try:
+			self.s.write(gcode)
+			self.s.readline()
+		except:
+			print("Serial port unavailable")
 		#update position if success
 		# TODO check to make sure it's actually a success
 		#self.pos = newpos
@@ -205,14 +220,17 @@ class XYZ:
 		self.s.write("?")
 		
 		while True:
-			status = self.s.readline()
-			if status is not None:
-				try:
-					matches = self.__pos_pattern__.findall(status)
-					#if matches is not None:
-					if len(matches[1]) == 3:
-						self.pos = list(matches[1])				
-					return status
-				except IndexError:
-					print("No matches found in serial")
-			else: break
+			try: 
+				status = self.s.readline()
+				if status is not None:
+					try:
+						matches = self.__pos_pattern__.findall(status)
+						#if matches is not None:
+						if len(matches[1]) == 3:
+							self.pos = list(matches[1])				
+						return status
+					except IndexError:
+						print("No matches found in serial")
+				else: break
+			except:
+				print("Report readiness but empty")

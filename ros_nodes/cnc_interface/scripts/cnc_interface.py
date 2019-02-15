@@ -25,10 +25,16 @@ def cmd_move_callback(msg):
 	print msg.linear.x, msg.linear.y, msg.linear.z
 	xyz.moveTo(msg.linear.x, msg.linear.y, msg.linear.z, blockUntilComplete=True)
 
+def stop_callback(msg):
+	if   msg.data == 's':
+		xyz.disableSteppers()
+	elif msg.data == 'f':
+		xyz.enableSteppers()
+
 def main():
 
-	pos_pub     = rospy.Publisher('/cnc_interface/position', Twist, queue_size = 10)
-	status_pub  = rospy.Publisher('/cnc_interface/status', String, queue_size = 10)
+	pos_pub     = rospy.Publisher('/cnc_interface/position',  Twist, queue_size = 10)
+	status_pub  = rospy.Publisher('/cnc_interface/status'  , String, queue_size = 10)
 
 	rospy.init_node('cnc_interface', anonymous=True)
 	acc         = rospy.get_param(acceleration)  
@@ -43,14 +49,15 @@ def main():
 	steps_z 	= rospy.get_param(z_steps_mm)
 
 	xyz.startup(acc,max_x,max_y,max_z,speed_x,speed_y,speed_z,steps_x,steps_y,steps_z)
-	rospy.Subscriber('cnc_cmd', Twist, cmd_move_callback)
+	rospy.Subscriber('cnc_interface/cmd' ,  Twist, cmd_move_callback)
+	rospy.Subscriber('cnc_interface/stop', String,     stop_callback)
 	rate = rospy.Rate(10)
 
 	while not rospy.is_shutdown():
 
-		status = xyz.getStatus()
+		status     = xyz.getStatus()
+		cnc_pose   = xyz.get_pos_Twist()
 		ros_status = String(status)
-		cnc_pose = xyz.get_pos_Twist()
 		pos_pub.publish(cnc_pose)
 		status_pub.publish(ros_status)
 		rate.sleep()
