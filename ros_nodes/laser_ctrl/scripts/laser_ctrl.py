@@ -19,7 +19,7 @@ class laser_ctrl:
 
 	def __init__(self):
 		self.location_pub  = rospy.Publisher("/laser_ctrl/img_feed/compressed", CompressedImage, queue_size = 1)
-		self.laser_status  = rospy.Subscriber("/laser_ctrl/status",String, self.cmd_callback, queue_size = 10)
+		self.laser_status  = rospy.Subscriber("/laser_ctrl/cmd",String, self.cmd_callback, queue_size = 10)
 		self.image_sub     = rospy.Subscriber("/raspicam_node/image/compressed",CompressedImage,self.image_callback, queue_size = 10)
 		self.info_sub      = rospy.Subscriber("/raspicam_node/camera_info",
 			CameraInfo, self.info_callback,  queue_size = 1)
@@ -35,9 +35,9 @@ class laser_ctrl:
 
 	def cmd_callback(self,ros_data):
 		msg = ros_data.data
-		if   msg == '1':#fire
+		if   msg == 'f':#fire
 			self.status = True
-		elif msg == '0':#stop
+		elif msg == 's':#stop
 			self.status = False
 
 	def image_callback(self,ros_data):
@@ -54,7 +54,7 @@ class laser_ctrl:
 			self.marker_color = color_palette['red']		
 		else:
 			self.marker_color = color_palette['green']
-		self.marker_color = color_palette['purple']
+		#self.marker_color = color_palette['purple']
 		cv.drawMarker(image,(w/2,h/2),self.marker_color,cv.MARKER_CROSS ,60,3,cv.LINE_AA)
 		cv.circle(image,(w/2,h/2), 30,self.marker_color,3,cv.LINE_AA)	    
 		msg = CompressedImage()

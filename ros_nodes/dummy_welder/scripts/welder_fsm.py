@@ -29,26 +29,26 @@ def is_stop():
 
 def is_centered():
 
-	return (robot.cnc_pos[:2] == robot.center_points[robot.detect_idx][:2]) and not robot.stop
+	return (robot.cnc_pos[:2] == robot.detect_roi[robot.detect_roi_idx][:2]) and not robot.stop
 
 
 def is_not_centered():
 
-	return robot.cnc_pos[:2] != robot.center_points[robot.detect_idx][:2] and not robot.stop
+	return robot.cnc_pos[:2] != robot.detect_roi[robot.detect_roi_idx][:2] and not robot.stop
 
 def is_marker():
 
-	return robot.cnc_pos[:2] == robot.grid_refs[0][:2] and not robot.stop
+	return robot.cnc_pos[:2] == robot.mark_loc[0][:2] and not robot.stop
 
 def is_not_marker():
 
-	return robot.cnc_pos[:2] != robot.grid_refs[0][:2] and not robot.stop
+	return robot.cnc_pos[:2] != robot.mark_loc[0][:2] and not robot.stop
 
 def grids_not_received():
-	return ( robot.detect_idx != robot.GRIDS_TO_PROCESS and robot.traj_received) and not robot.stop
+	return ( robot.detect_roi_idx != robot.ROI_TO_PROCESS and robot.traj_received) and not robot.stop
 
 def traj_received():
-	return robot.detect_idx == robot.GRIDS_TO_PROCESS and not robot.stop
+	return robot.detect_roi_idx == robot.ROI_TO_PROCESS and not robot.stop
 
 def traj_not_received():
 
@@ -96,10 +96,11 @@ def center():
 	print("ROBOT_FSM: Awaiting centering")
 	robot.start    = False
 	robot.pub_time = True
+	robot.mark_loc = []
 	robot.blade_count = 0 
 	robot.cnc_stop_pub.publish('f')
 	robot.start_time = time.time()
-	robot.move_to(robot.center_points[robot.detect_idx])
+	robot.move_to(robot.detect_roi[robot.detect_roi_idx])
 
 def detection_query():
 
@@ -113,7 +114,7 @@ def detection_query():
 def place_on_marker():
 
 	print("ROBOT_FSM: Awaiting reference marking")
-	robot.move_to(robot.grid_refs[0])
+	robot.move_to(robot.mark_loc[0])
 
 ##############################################
 # guide for traj indexing robot.traj[grid][blade_number][points][coordinates]
@@ -166,7 +167,7 @@ def send_point():
 
 def await_for_traj():
 	print("ROBOT_FSM: Awaiting centering")
-	robot.move_to(robot.center_points[robot.detect_idx])
+	robot.move_to(robot.detect_roi[robot.detect_roi_idx])
 	robot.traj_received = False
 
 def update_traj():
@@ -192,7 +193,7 @@ def update_traj():
 		robot.laser_cmd      = False
 		robot.laser_sync     = True
 		robot.next_is_blade  = False
-		robot.detect_idx	 = 0
+		robot.detect_roi_idx	 = 0
 	else:
 		print("ROBOT_FSM: Welding in progress")
 		robot.traj_completed = False
@@ -200,6 +201,10 @@ def update_traj():
 def marker_reached():
 	robot.welding_time = time.time()
 	print("ROBOT_FSM: Marker Reached, Starting Traj")
+
+def detection_finished():
+	robot.welding_time = time.time()
+	print("ROBOT_FSM: CV process finish, start Welding")
 
 def stopCNC():
 	print("ROBOT FSM: STOP RECEIVED, Shutting down laser & disabling steppers")
@@ -213,9 +218,10 @@ welder_trans_tt = [fsm_trans(        welder_states["IDLE"],          is_not_star
 			       fsm_trans( welder_states["WAIT_CENTER"],           is_centered,   welder_states["WAIT_TRAJ"], detection_query),
 			       fsm_trans(   welder_states["WAIT_TRAJ"],    grids_not_received, welder_states["WAIT_CENTER"],  await_for_traj),
 			       fsm_trans(   welder_states["WAIT_TRAJ"],     traj_not_received,   welder_states["WAIT_TRAJ"],        	None),
-			       fsm_trans(   welder_states["WAIT_TRAJ"],         traj_received,   welder_states["WAIT_MARK"], place_on_marker),
-			       fsm_trans(   welder_states["WAIT_MARK"],         is_not_marker,   welder_states["WAIT_MARK"],        	None),
-			       fsm_trans(   welder_states["WAIT_MARK"],             is_marker,     welder_states["DO_TRAJ"],  marker_reached),
+			       fsm_trans(   welder_states["WAIT_TRAJ"],         traj_received,     welder_states["DO_TRAJ"], detection_finished),
+			       #fsm_trans(   welder_states["WAIT_TRAJ"],         traj_received,   welder_states["WAIT_MARK"], place_on_marker),
+			       #fsm_trans(   welder_states["WAIT_MARK"],         is_not_marker,   welder_states["WAIT_MARK"],        	None),
+			       #fsm_trans(   welder_states["WAIT_MARK"],             is_marker,     welder_states["DO_TRAJ"],  marker_reached),
 			       fsm_trans(     welder_states["DO_TRAJ"], is_not_traj_completed,  welder_states["WAIT_LASER"], calculate_point),
 			       fsm_trans(  welder_states["WAIT_LASER"],     is_not_laser_sync,  welder_states["WAIT_LASER"],     		None),
 			       fsm_trans(  welder_states["WAIT_LASER"],         is_laser_sync,  welder_states["WAIT_POINT"],      send_point),

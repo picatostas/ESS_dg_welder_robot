@@ -103,22 +103,6 @@ class image_feature:
         #cv.imshow('canny',canny)
         #cv.waitKey(2)
 
-
-        ### IMAGE HEADER 
-        han_logo_h = np.size(self.han_logo,0)
-        han_logo_w = np.size(self.han_logo,1)
-        ess_logo_h = np.size(self.ess_logo,0)
-        ess_logo_w = np.size(self.ess_logo,1)
-        if han_logo_h > ess_logo_h:
-            image[0:han_logo_h,0:w] = [255,255,255]
-        else:
-            image[0:ess_logo_h,0:w] = [255,255,255]
-
-        image[0:han_logo_h,int(0.72*w):int(0.72*w + han_logo_w)] = self.han_logo
-        image[0:ess_logo_h,int(0.15*w):int(0.15*w + ess_logo_w)] = self.ess_logo
-        cv.putText(image,str("MG Welder Robot : Han Solo"),(450,40), font, 1,(0,0,0),3,cv.LINE_AA)
-        ### IMAGE HEADER
-
         #### Create CompressedIamge ####
         msg = CompressedImage()
         msg.header.stamp = rospy.Time.now()

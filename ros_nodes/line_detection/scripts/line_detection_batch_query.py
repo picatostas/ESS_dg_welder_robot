@@ -47,6 +47,7 @@ class image_feature:
         self.get_ctr            = True
         self.grid_ref           = np.zeros((3,2))
         self.marker_count       = np.zeros(3)
+        self.mark_location      = np.zeros((3,2))
         self.blades_ready       = True
         self.preproc_time       = 0
         self.blade_lines        = [[[], [], [], [], [], [], [], [], [], [], [], [], [], [], [], []],
@@ -68,6 +69,7 @@ class image_feature:
         self.image_pub    = rospy.Publisher("/line_detection/Image/compressed",
             CompressedImage, queue_size = 1)
         self.blades_pub   = rospy.Publisher("/line_detection/blades_location", String, queue_size = 48)
+        self.mark_pub     = rospy.Publisher("/line_detection/mark_location", String, queue_size = 10)
         self.subscriber   = None # otherwise it doesnt work, as I need to resub each time that i got a query
         ### Load images and get some features
         self.info_sub     = rospy.Subscriber("/raspicam_node/camera_info",
@@ -76,12 +78,6 @@ class image_feature:
         self.template     = cv.imread(img_path + 'pattern.png')
         self.template     = cv.cvtColor(self.template, cv.COLOR_BGR2GRAY)
         self.template     = cv.Canny(self.template, canny_th[0], canny_th[1])
-        self.han_logo     = cv.imread(img_path + 'han100.png')
-        self.ess_logo     = cv.imread(img_path + 'ess100.png')
-        self.han_logo_h   = np.size(self.han_logo,0)
-        self.han_logo_w   = np.size(self.han_logo,1)
-        self.ess_logo_h   = np.size(self.ess_logo,0)
-        self.ess_logo_w   = np.size(self.ess_logo,1)
         self.thread_list  = []
 
     def info_callback(self, ros_data):
@@ -143,14 +139,12 @@ class image_feature:
                 blades_msg[grid_idx][blade_idx].append('%.2f' % (( self.grid_ref[grid_idx][0] - line_avg[2] )*px_to_mm ))
                 blades_msg[grid_idx][blade_idx].append('%.2f' % (( self.grid_ref[grid_idx][1] - line_avg[3] )*px_to_mm ))
 
+        self.mark_pub.publish(str(self.mark_location))
         for grid_idx, grid in enumerate(blades_msg):
-            #self.blades_pub.publish(str("Grid " + str(grid_idx + 1)))
             for blade_idx, blade in enumerate(grid):
                 message = "G:" + str(grid_idx) + " B:" + str(blade_idx) +" "+ str(blade)
                 self.blades_pub.publish(message)
             rospy.sleep(0.01)
-                #print()
-        #print("Sorting finished")
 
     def process_chunk(self, chunk, chunk_idx, chunk_size, chunk_time):
         #print("Thread " + str(chunk_idx) + " started")
@@ -167,6 +161,9 @@ class image_feature:
                 #print ctr
                 self.grid_ref[chunk_idx][0] = ctr[0]
                 self.grid_ref[chunk_idx][1] = ctr[1]
+                self.mark_location[chunk_idx][0] = (640-ctr[0])*px_to_mm
+                self.mark_location[chunk_idx][1] = (ctr[1]+ chunk_size*chunk_idx-480)*px_to_mm
+
                 self.get_ctr = False
                 #print("Template time %.2f ms"%((time.time() - template_time)*1000))
             # To keep track of how many times the chunk has been processed
@@ -247,10 +244,7 @@ class image_feature:
             self.subscriber.unregister()
             self.blade_count = np.zeros((3,16))
             print("Enough lines per blade detected, calculating welding points")
-            #for i, marker in enumerate(self.grid_ref):
-            #    marker /= self.marker_count[i]
-            #self.marker_count = np.zeros(3)
-            #print(self.grid_ref)
+
             sort_time = time.time()
             self.sort_lines()
             print("Sort time %.2f ms"%((time.time() - sort_time)*1000))
@@ -263,18 +257,19 @@ class image_feature:
             for idx, ctr in enumerate(self.grid_ref):            
                 cv.drawMarker(image,(int(ctr[0]),int(ctr[1])+ chunk_size*idx),(0,255,0),cv.MARKER_CROSS ,60,2,cv.LINE_AA)
                 cv.circle(    image,(int(ctr[0]),int(ctr[1])+ chunk_size*idx), 30, (0,255,0),2,cv.LINE_AA)
+                print("%.2f , %.2f"%((640-ctr[0])*px_to_mm,(ctr[1]+ chunk_size*idx-480)*px_to_mm))
 
             ### IMAGE HEADER    
-            if self.han_logo_h > self.ess_logo_h:
-                image[0:self.han_logo_h,0:w] = [255,255,255]
-            else:
-                image[0:self.ess_logo_h,0:w] = [255,255,255]
+            #if self.han_logo_h > self.ess_logo_h:
+            #    image[0:self.han_logo_h,0:w] = [255,255,255]
+            #else:
+            #    image[0:self.ess_logo_h,0:w] = [255,255,255]
     
-            image[0:self.han_logo_h,int(0.72*w):int(0.72*w + self.han_logo_w)] = self.han_logo
-            image[0:self.ess_logo_h,int(0.15*w):int(0.15*w + self.ess_logo_w)] = self.ess_logo
-            cv.putText(image,str("MG Welder Robot : Han Solo"),(420,40), font, 1,(0,0,0),3,cv.LINE_AA)
+            #image[0:self.han_logo_h,int(0.72*w):int(0.72*w + self.han_logo_w)] = self.han_logo
+            #image[0:self.ess_logo_h,int(0.15*w):int(0.15*w + self.ess_logo_w)] = self.ess_logo
+            #cv.putText(image,str("MG Welder Robot : Han Solo"),(420,40), font, 1,(0,0,0),3,cv.LINE_AA)
             ### 
-            print("GUI time %.2f ms"%((time.time() - gui_time)*1000))
+            #print("GUI time %.2f ms"%((time.time() - gui_time)*1000))
             pub_time = time.time()
             ### Create and Publish CompressedIamge ####
             msg = CompressedImage()

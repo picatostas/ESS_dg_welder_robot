@@ -6,7 +6,7 @@ from qt_gui.plugin import Plugin
 from python_qt_binding import loadUi
 from python_qt_binding.QtWidgets import QWidget, QLabel, QPushButton
 from python_qt_binding.QtGui import QImage, QPixmap
-from python_qt_binding.QtCore import Qt
+from python_qt_binding.QtCore import Qt,Signal,Slot, QObject
 from sensor_msgs.msg import CompressedImage
 from std_msgs.msg import  String
 import numpy as np
@@ -15,7 +15,7 @@ import cv2 as cv
 welder_states = ["Idle","Moving CNC to Next CV Point", "Awaiting CV result",
                  "Awating Start Mark","Move to Point","Awating CNC to place",
                  "Awating Laser Sync"]
-                 
+
 class MyPlugin(Plugin):
 
     def __init__(self, context):
@@ -25,6 +25,7 @@ class MyPlugin(Plugin):
         self.welder_progress_sub   = rospy.Subscriber('/welder/progress', String, self.progress_callback, queue_size = 10)
         self.image_sub             = rospy.Subscriber("/laser_ctrl/img_feed/compressed",
                                                       CompressedImage, self.image_callback, queue_size = 10)
+        self.laser_state_sub       = rospy.Subscriber('/laser_ctrl/cmd', String, self.laser_state_clbk, queue_size = 10)
         super(MyPlugin, self).__init__(context)
         # Give QObjects reasonable names
         self.setObjectName('welder_node_gui')
@@ -61,11 +62,24 @@ class MyPlugin(Plugin):
         self._widget.startButton.clicked.connect(self.start_cnc)
         self._widget.stopButton.clicked.connect(self.stop_cnc)
         self._widget.timeLabel.setText('None')
-        self._widget.progressBar.setValue(0)
+        #self._widget.progressBar.setValue(0)
+        #self.progressSignal = Signal(str)
+        #self._widget.connect(self._widget,self.progressSignal,self.progressSlot)
 
     def start_cnc(self):
 
         self.cmd_pub.publish('1')
+
+
+    def progressSlot(self,data):
+
+        blade_count = int(ros_data.data)
+        progress    = int(float(blade_count)/256*100)
+        grids       = int((blade_count/16))
+        self._widget.progressBar.setValue(progress)
+        self._widget.bladeNumber.display(blade_count)       
+        self._widget.gridNumber.display(grids)   
+
 
     def stop_cnc(self):
 
@@ -88,13 +102,17 @@ class MyPlugin(Plugin):
         self._widget.timeLabel.setText(time_text) 
 
     def progress_callback(self,ros_data):
-        blade_count = int(ros_data.data)
-        progress    = int(float(blade_count)/256*100)
-        grids       = int((blade_count/16))
-        self._widget.progressBar.setValue(progress)
-        self._widget.bladeNumber.display(blade_count)       
-        self._widget.gridNumber.display(grids)   
-    
+
+        self.emit(Signal("changeUI(PyQt_PyObject)"), ros_data.data)
+
+
+    def laser_state_clbk(self,ros_data):
+
+        if ros_data.data == 's':
+            self._widget.laserStatusLabel.setText('OFF')
+        elif ros_data.data == 'f':
+            self._widget.laserStatusLabel.setText('ON')
+
     def status_callback(self,ros_data):
 
         if ros_data.data != '0':
