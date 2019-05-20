@@ -26,10 +26,16 @@ maxLineGap = 30
 #canny detection variables
 lowTh = 50
 HighTh = 200
-len_th = [60,75]
-dst_th = [30,60]
-slope_th = 0.30 #rads
+len_th = [60,80]
+dst_th = [35,130]
+loc_th = 10
+slope_th = 0.5 #rads
 px_to_mm = 0.1499 # pseudo empiric value
+#HSV green mask parameters
+sensitivity = 20
+lower_green = np.array([60 - sensitivity,50,50])
+upper_green = np.array([60 + sensitivity,200,200])
+
 # Distortion parameters 
 font = cv.FONT_HERSHEY_SIMPLEX
 chunk_factor = 3
@@ -42,7 +48,7 @@ class image_feature:
         self.ready = True
         self.camera_matrix = 0 
         self.dist_coeff    = 0 
-        self.image_pub = rospy.Publisher("/lines_detected/compressed",
+        self.image_pub = rospy.Publisher("/line_detection/image/compressed",
             CompressedImage, queue_size = 1)
 
         self.subscriber = rospy.Subscriber("/raspicam_node/image/compressed",
@@ -56,12 +62,15 @@ class image_feature:
         self.template = cv.Canny(self.template, lowTh, HighTh)
         self.han_logo = cv.imread('/home/multigrid/catkin_ws/src/line_detection/scripts/han100.png')
         self.ess_logo = cv.imread('/home/multigrid/catkin_ws/src/line_detection/scripts/ess100.png')
-        
+        self.blade_loc    = [ 79.58, 146.29,  213,  279.71,
+                             346.42, 413.13,  479.84,  546.55,
+                             613.26, 679.97,  746.68,  813.39,
+                             880.10, 946.81, 1013.52, 1080.23, 1146.94]
     def info_callback(self, ros_data):
            self.camera_matrix = np.reshape(ros_data.K,(3,3))
            self.dist_coeff = ros_data.D
-           print("Camera Matrix:\n" + str(self.camera_matrix))
-           print("Distortion Coeffs:\n" + str(self.dist_coeff))       
+           #print("Camera Matrix:\n" + str(self.camera_matrix))
+           #print("Distortion Coeffs:\n" + str(self.dist_coeff))       
            self.info_sub.unregister()
 
 
@@ -75,33 +84,67 @@ class image_feature:
         K = self.camera_matrix
         d = self.dist_coeff
         newcamera, roi = cv.getOptimalNewCameraMatrix(K,d,(w,h),0)
-        #image = cv.undistort(image, K,d, None, newcamera)
+        image = cv.undistort(image, K,d, None, newcamera)
         gray  = cv.cvtColor(image,cv.COLOR_BGR2GRAY)
         canny = cv.Canny(gray, lowTh, HighTh,apertureSize = 3)
-        image_chunks = np.vsplit(gray,chunk_factor)
+        image_chunks = np.vsplit(canny,chunk_factor)
         chunk_size = h / chunk_factor
+        
+        image_hsv = cv.cvtColor(image,cv.COLOR_BGR2HSV)
+        green_mask = cv.inRange(image_hsv,lower_green,upper_green)
+        canny_green = cv.Canny(green_mask,lowTh,HighTh,apertureSize = 3)
+        markers = cv.HoughCircles(canny_green, cv.HOUGH_GRADIENT, 1, 100,
+                                        param1=30,
+                                        param2=15,
+                                        minRadius=27,
+                                        maxRadius=33)
+        if markers is not None: 
+            markers = np.uint16(np.around(markers))
+            for mark in markers[0,:]:
+                # draw the outer circle
+                cv.circle(image,(mark[0],mark[1]),mark[2],(0,255,0),2)
+                # draw the center of the circle
+                cv.circle(image,(mark[0],mark[1]),2,(0,0,255),3) 
         for idx, chunk in enumerate(image_chunks):
 
             
-            edges = cv.Canny(chunk, lowTh, HighTh,apertureSize = 3)
-            lines = cv.HoughLinesP(edges,1,np.pi/180,40,None,minLineLength,maxLineGap)
-            ctr = match_template(self.template, chunk)
+            #edges = cv.Canny(chunk, lowTh, HighTh,apertureSize = 3)
+            lines = cv.HoughLinesP(chunk,1,np.pi/180,40,None,minLineLength,maxLineGap)
+            #ctr = match_template(self.template, chunk)
 
             valid_lines = []
-            if lines is not None:
-                valid_lines = get_lines(ctr,lines)
+            circles = cv.HoughCircles(chunk, cv.HOUGH_GRADIENT, 1, 100,
+                                        param1=30,
+                                        param2=15,
+                                        minRadius=27,
+                                        maxRadius=33)
+            if circles is not None:            
+                circles = np.uint16(np.around(circles))
+                if idx != len(image_chunks):
+                    cv.line(image, (0, chunk_size*idx), (w, chunk_size*idx), (0, 0, 0), 1, cv.LINE_AA)
+    
+                for i in circles[0,:]:
+                    if lines is not None:
+                        valid_lines = get_lines(i,lines,self.blade_loc)
+                    for line in valid_lines:
+                        cv.line(image, (line[0],line[1] + chunk_size*idx), (line[2],line[3] + chunk_size*idx), (0, 255, 0), 2, cv.LINE_AA)
+                    cv.line(image, (0, i[1]- dst_th[0] + chunk_size*idx), (w,i[1]- dst_th[0] +chunk_size*idx), (255, 0, 0), 1, cv.LINE_AA)
+                    cv.line(image, (0, i[1]- dst_th[1] + chunk_size*idx), (w,i[1]- dst_th[1] +chunk_size*idx), (255, 0, 0), 1, cv.LINE_AA)
+                    for loc in self.blade_loc:
+                        cv.line(image, (i[0] + int(loc), chunk_size*idx),(i[0] + int(loc), chunk_size*(idx+1)), (255, 0, 0), 1, cv.LINE_AA)
+                        cv.line(image, (i[0] + int(loc) + loc_th, chunk_size*idx),(i[0] + int(loc)  + loc_th, chunk_size*(idx+1)), (100, 0, 100), 1, cv.LINE_AA)
+                        cv.line(image, (i[0] + int(loc) - loc_th, chunk_size*idx),(i[0] + int(loc)  - loc_th, chunk_size*(idx+1)), (100, 0, 100), 1, cv.LINE_AA)
+                    ## draw the outer circle
+                    #cv.circle(image,(i[0],i[1] + chunk_size*idx),i[2],(0,255,0),2)
+                    ## draw the center of the circle
+                    #cv.circle(image,(i[0],i[1] + chunk_size*idx),2,(0,0,255),3)
 
-            cv.circle(image,(ctr[0],ctr[1] + chunk_size*idx), 20, (0,255,0),1,cv.LINE_AA)
-            cv.drawMarker(image,(ctr[0],ctr[1] +chunk_size*idx),(0,255,0),cv.MARKER_CROSS ,40,1,cv.LINE_AA)
 
-            for line in valid_lines:
-                cv.line(image, (line[0],line[1] + chunk_size*idx), (line[2],line[3] + chunk_size*idx), (200, 0, 200), 2, cv.LINE_AA)
 
-            if idx != len(image_chunks):
-                cv.line(image, (0, chunk_size*idx), (w, chunk_size*idx), (0, 255, 255), 1, cv.LINE_AA)
-
-        #cv.imshow('canny',canny)
-        #cv.waitKey(2)
+        cv.imshow('canny',canny)
+        #cv.imshow('green_canny', canny_green)
+        #cv.imshow('green',green_mask)
+        cv.waitKey(2)
 
         #### Create CompressedIamge ####
         msg = CompressedImage()
@@ -153,7 +196,7 @@ def match_template(template, gray):
     return [(startX + endX)/2 , (startY + endY)/2]
 
 
-def get_lines(ctr,lines):
+def get_lines(ctr,lines,blade_loc):
     valid_lines = []
     for element in lines:
         line = element[0]
@@ -168,7 +211,14 @@ def get_lines(ctr,lines):
         if slope == 1 and line_length > len_th[0] and line_length < len_th[1]:
             # discard the lines that dont start where the blade should start
             if ((ctr[1] - y1) > dst_th[0] and (ctr[1] - y1) < dst_th[1] ) or ((ctr[1] - y2) > dst_th[0] and (ctr[1] - y2) < dst_th[1] ):
-                valid_lines.append(line)
+                if y1<=y2:
+                    dist_to_ref = length(ctr[0],x2,ctr[1],y2)
+                else:
+                    dist_to_ref = length(ctr[0],x1,ctr[1],y1)
+                #valid_lines.append(line)
+                for loc_idx, loc in enumerate(blade_loc):
+                        if (dist_to_ref > (loc - loc_th) ) and (dist_to_ref < (loc + loc_th)):
+                            valid_lines.append(line)  
 
     return valid_lines
 

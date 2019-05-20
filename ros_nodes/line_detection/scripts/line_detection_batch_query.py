@@ -66,7 +66,7 @@ class image_feature:
         self.detect_query = rospy.Subscriber("line_detection/query",String,
             self.query_callback , queue_size = 10)
 
-        self.image_pub    = rospy.Publisher("/line_detection/Image/compressed",
+        self.image_pub    = rospy.Publisher("/line_detection/image/compressed",
             CompressedImage, queue_size = 1)
         self.blades_pub   = rospy.Publisher("/line_detection/blades_location", String, queue_size = 48)
         self.mark_pub     = rospy.Publisher("/line_detection/mark_location", String, queue_size = 10)
@@ -259,15 +259,6 @@ class image_feature:
                 cv.circle(    image,(int(ctr[0]),int(ctr[1])+ chunk_size*idx), 30, (0,255,0),2,cv.LINE_AA)
                 print("%.2f , %.2f"%((640-ctr[0])*px_to_mm,(ctr[1]+ chunk_size*idx-480)*px_to_mm))
 
-            ### IMAGE HEADER    
-            #if self.han_logo_h > self.ess_logo_h:
-            #    image[0:self.han_logo_h,0:w] = [255,255,255]
-            #else:
-            #    image[0:self.ess_logo_h,0:w] = [255,255,255]
-    
-            #image[0:self.han_logo_h,int(0.72*w):int(0.72*w + self.han_logo_w)] = self.han_logo
-            #image[0:self.ess_logo_h,int(0.15*w):int(0.15*w + self.ess_logo_w)] = self.ess_logo
-            #cv.putText(image,str("MG Welder Robot : Han Solo"),(420,40), font, 1,(0,0,0),3,cv.LINE_AA)
             ### 
             #print("GUI time %.2f ms"%((time.time() - gui_time)*1000))
             pub_time = time.time()
