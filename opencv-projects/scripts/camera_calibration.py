@@ -4,8 +4,8 @@ import glob
 # squeare size in mm 
 square_size = 25 
 # chessboard size 
-chess_rows = 6
-chess_columns = 8
+chess_rows = 7
+chess_columns = 10
 # termination criteria
 criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, square_size, 0.001)
 
@@ -16,7 +16,7 @@ print("Object points prepared")
 # Arrays to store object points and image points from all the images.
 objpoints = [] # 3d point in real world space
 imgpoints = [] # 2d points in image plane.
-images = glob.glob('*.jpg')
+images = glob.glob('*.png')
 print(str(len(images)) +" images found")
 for i in range(len(images)):
 	print(images[i])

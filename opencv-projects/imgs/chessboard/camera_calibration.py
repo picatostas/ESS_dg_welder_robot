@@ -4,10 +4,10 @@ import glob
 import yaml
 
 # squeare size in mm
-square_size = 24
+square_size = 25
 # chessboard size
-chess_rows = 7
-chess_columns = 9
+chess_rows = 6
+chess_columns = 8
 # termination criteria
 criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, square_size, 0.001)
 
@@ -18,13 +18,13 @@ print("Object points prepared")
 # Arrays to store object points and image points from all the images.
 objpoints = [] # 3d point in real world space
 imgpoints = [] # 2d points in image plane.
-images = glob.glob('*.jpg')
+images = glob.glob('*.png')
 print(str(len(images)) +" images found")
 for i in range(len(images)):
 	print(images[i])
 for fname in images:
-	print("Image " + fname + " is being processed")
 	img = cv2.imread(fname)
+	cv2.imshow('img',img)
 	gray = cv2.cvtColor(img,cv2.COLOR_BGR2GRAY)
 	# Find the chess board corners
 	ret, corners = cv2.findChessboardCorners(gray, (chess_columns,chess_rows),None)
@@ -34,10 +34,11 @@ for fname in images:
 		corners2 = cv2.cornerSubPix(gray,corners,(11,11),(-1,-1),criteria)
 		imgpoints.append(corners)
 		# Draw and display the corners
-		#img = cv2.drawChessboardCorners(img, (chess_columns, chess_rows), corners,ret)
+		img = cv2.drawChessboardCorners(img, (chess_columns, chess_rows), corners,ret)
 		cv2.drawChessboardCorners(img, (chess_columns, chess_rows), corners2,ret)
-		#cv2.imshow(img)
-		#cv2.imwrite('processed_' + fname,img)
+		cv2.imshow('img',img)
+		cv2.imwrite('processed_' + fname,img)
+		print("Image " + fname + " is being processed")
 ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None)
 
 

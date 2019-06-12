@@ -5,7 +5,7 @@ import numpy as np
 import cv2 as cv 
 import roslib 
 import rospy
-from sensor_msgs.msg import CompressedImage, CameraInfo
+from sensor_msgs.msg import Image,CompressedImage, CameraInfo
 from std_msgs.msg import String
 font = cv.FONT_HERSHEY_SIMPLEX
 
@@ -20,8 +20,8 @@ class laser_ctrl:
 	def __init__(self):
 		self.location_pub  = rospy.Publisher("/laser_ctrl/img_feed/compressed", CompressedImage, queue_size = 1)
 		self.laser_status  = rospy.Subscriber("/laser_ctrl/cmd",String, self.cmd_callback, queue_size = 10)
-		self.image_sub     = rospy.Subscriber("/raspicam_node/image/compressed",CompressedImage,self.image_callback, queue_size = 10)
-		self.info_sub      = rospy.Subscriber("/raspicam_node/camera_info",
+		self.image_sub     = rospy.Subscriber("/camera_array/cam0/image_raw/compressed",CompressedImage,self.image_callback, queue_size = 10)
+		self.info_sub      = rospy.Subscriber("/camera_array/cam0/camera_info",
 			CameraInfo, self.info_callback,  queue_size = 1)
 		self.status        = False
 		self.camera_matrix = 0 
@@ -43,6 +43,7 @@ class laser_ctrl:
 	def image_callback(self,ros_data):
 		np_image = np.fromstring(ros_data.data, np.uint8)
 		image = cv.imdecode(np_image, cv.IMREAD_COLOR)
+		#image = CompressedImage(image)
 		h = np.size(image,0)
 		w = np.size(image,1)
 		K = self.camera_matrix

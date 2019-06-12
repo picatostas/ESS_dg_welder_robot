@@ -5,6 +5,14 @@ cam_aliases:
 master_cam: 18486643
 skip: 20
 delay: 0
+distortion_model: plumb_bob
+image_height: 1200
+image_width: 1920
+intrinsic_coeffs:
+- [1192.7368121029237, 0.0, 937.8440738594899,0.0, 1191.9839001202263, 623.4427147564193,0.0, 0.0, 1.0]
+distortion_coeffs:
+- [-0.25062317670621914, -0.0020169455509021507, 8.298292809068899e-05, -0.001161442052595698,
+  0.2264924266183459]
 
 # Assign all the follwing via launch file to prevent confusion and conflict
 
