@@ -20,37 +20,36 @@ Detects grid lines
 	
 #### Suscribed topics: 
 
--       Camera_frames
+- Camera_frames
 
--       Camera info
+- Camera info
 
--       Detection_query
+- Detection_query
 
  
 #### Published topics:
 
--       Blade & ref locations
+- Blade & ref locations
 
--       Image with lines
+- Image with lines
 
  
 
 ### cnc_interface
-	
 
 Sends GCODE through serial to the CNC
 
 #### Suscribed topics: 	
 
--       XYZ coordinates cmd
+- XYZ coordinates cmd
 
--       CNC stop
+- CNC stop
 	
 #### Published topics:
--       CNC movement status & position
+- CNC movement status & position
+
 
 ### Dummy welder
-	
 
 Core of the system, generates trajectories and has 2 FSM to control everything
 
@@ -92,6 +91,8 @@ Controls the activation of the laser, checking that the status is the one that h
 #### Published topics:
 
 - Camera frames with crosshair
+
+
 
 ### Welder_node_gui
 	
@@ -173,7 +174,7 @@ The detection ROI are set in welder_fsm.py file in dummy_welder, a ROI is a coor
 ### Welder_node_gui
 	
 
-`rqt –standalone welder_node_gui`
+`rqt ï¿½standalone welder_node_gui`
 
 The GUI has been design with QtCreator. .ui file will be found in the Node files.
 
