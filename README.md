@@ -1,20 +1,59 @@
 # dg_welder_robot
 
-This code is for controlling the welder robot use to weld the aluminum blades of Multi Grid neutron detectors.
+This code is for controlling the welder robot used to weld the aluminum blades of the Multi-Grid neutron detectors.
 Using OpenCV and ROS middleware.
 
-ROS version used : Melodic.
+ROS version : Melodic.
 
 Ubuntu 18.04
 
 Developed by Pablo Costas Franco
 
-## Description of nodes:
+## Directory structure
 
+```bash
+.
+├── opencv-projects
+│   ├── camera_calib_files
+│   ├── imgs
+│   │   └── chessboard
+│   └── scripts
+└── ros_nodes
+    ├── cnc_interface
+    │   ├── launch
+    │   ├── scripts
+    │   └── srv
+    ├── coordinate_generator
+    │   └── scripts
+    ├── dummy_welder
+    │   └── scripts
+    ├── laser_ctrl
+    │   └── scripts
+    ├── line_detection
+    │   ├── launch
+    │   └── scripts
+    ├── spinnaker_camera_driver
+    │   ├── cfg
+    │   ├── cmake
+    │   ├── include
+    │   │   └── spinnaker_sdk_camera_driver
+    │   ├── launch
+    │   ├── msg
+    │   ├── params
+    │   └── src
+    ├── welder-gui
+    │   └── imgs
+    └── welder_node_gui
+        ├── resource
+        │   └── imgs -> ../../welder-gui/imgs/
+        ├── scripts
+        └── src
+            └── welder_node_gui
+```
 
+## Description of nodes
 
 ### Line_detection
-	
 
 Detects grid lines
 	
@@ -32,7 +71,6 @@ Detects grid lines
 - Blade & ref locations
 
 - Image with lines
-
  
 
 ### cnc_interface
@@ -75,9 +113,9 @@ Core of the system, generates trajectories and has 2 FSM to control everything
 
 - Welder progress
 
+
 ### Laser_ctrl
 	
-
 Controls the activation of the laser, checking that the status is the one that has to be in any moment
 	
 #### Suscribed topics:
@@ -96,7 +134,6 @@ Controls the activation of the laser, checking that the status is the one that h
 
 ### Welder_node_gui
 	
-
 GUI to control welder. Reads from the Qt Gui file and runs the GUI within rqt ROS gui framework
 	
 #### Suscribed topics:
@@ -112,10 +149,8 @@ GUI to control welder. Reads from the Qt Gui file and runs the GUI within rqt RO
 - Welder cmd
 
  
-
 ### Spinnaker_sdk_camera_driver
 	
-
 Purpose: Publish FLIR camera in ros topics
 	
 #### Suscribed topics:
@@ -130,16 +165,14 @@ Purpose: Publish FLIR camera in ros topics
 
 
 
-## How to run each node:
-
-
+## How to run the nodes
 
 ### Line_detection
 	
-
 `rosrun line_detection line_detection_batch_query.py` for operation
 
 `rosrun line_detection line_detection_batch_stream.py` for tests
+
 
 ### cnc_interface
 
@@ -148,21 +181,18 @@ serial driver.
 
 https://github.com/openautomation/ROS-GRBL
 
-
 `roslaunch cnc_interface smoothie.launch`
 
 Launch files: smoothie.launch is for a custom build of shapeoko T using Smoothieboard as a controller.
 
 For other Axis systems create the .launch file 
 
- 
 Be careful when launching cnc_interface as the CNC will automatically do the homing.
+
 
 ### Dummy welder
 	
-
 `rosrun dummy_welder dummy_welder.py`
-
 
 The detection ROI are set in welder_fsm.py file in dummy_welder, a ROI is a coordinate from where the camera is able to spot a bunch of grids, in the case of the prototype, 6 roi for 16 grids, 3 grids per roi, skipping the overlapped ones.
 
@@ -171,15 +201,16 @@ The detection ROI are set in welder_fsm.py file in dummy_welder, a ROI is a coor
 
 `rosrun laser_ctrl laser_ctrl.py`
 
+
 ### Welder_node_gui
 	
-
 `rqt �standalone welder_node_gui`
 
 The GUI has been design with QtCreator. .ui file will be found in the Node files.
 
 
 Once everything is running in the GUI should appear the video stream, and when pressing start everything should work.
+
 
 ### Spinnaker_sdk_camera_driver
 	
@@ -190,8 +221,7 @@ https://github.com/neufieldrobotics/spinnaker_sdk_camera_driver
 `roslaunch spinnaker_sdk_camera_driver acquisition.launch`
 
 
-## List of things that needs to be done
-
+## TODO?
 
 ### Line_detection
 	
@@ -216,7 +246,7 @@ Change dependency on led_ctrl.py which was running on raspberryPi previous to us
 	
 Use Qt signals for updating the GUI based on ROS callbacks, as now is crashy.
 
+
 ### Spinnaker_sdk_camera_driver
 	
-
 Implement option for changing camera orientation and add parameter in .launch file.
