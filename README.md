@@ -21,20 +21,28 @@ Developed by Pablo Costas Franco
 └── ros_nodes
     ├── cnc_interface
     │   ├── launch
-    │   ├── scripts
-    │   └── srv
-    ├── coordinate_generator
     │   └── scripts
     ├── dummy_welder
     │   └── scripts
     ├── laser_ctrl
     │   └── scripts
-    ├── line_detection
+    ├── led_ctrl
     │   ├── launch
+    │   ├── msg
+    │   ├── scripts
+    │   ├── src
+    │   └── srv
+    ├── line_detection
     │   └── scripts
+    ├── raspicam_node
+    │   ├── camera_info
+    │   ├── cmake
+    │   └── launch
     ├── spinnaker_camera_driver
     │   ├── cfg
     │   ├── cmake
+    │   ├── docs
+    │   │   └── images
     │   ├── include
     │   │   └── spinnaker_sdk_camera_driver
     │   ├── launch
@@ -49,6 +57,7 @@ Developed by Pablo Costas Franco
         ├── scripts
         └── src
             └── welder_node_gui
+
 ```
 
 ## Description of nodes

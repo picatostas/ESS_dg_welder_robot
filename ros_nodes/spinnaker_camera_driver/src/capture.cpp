@@ -79,6 +79,8 @@ acquisition::Capture::Capture():nh_(),nh_pvt_ ("~") {
     init_delay_ = 1; 
     master_fps_ = 20.0;
     binning_ = 1;
+    reverseX_ = false;
+    reverseY_ = false;
     todays_date_ = todays_date();
     
     dump_img_ = "dump" + ext_;
@@ -267,7 +269,15 @@ void acquisition::Capture::read_parameters() {
         ROS_INFO("  Unique time stamps for each camera: %s",!MASTER_TIMESTAMP_FOR_ALL_?"true":"false");
     } 
         else ROS_WARN("  'utstamps' Parameter not set, using default behavior utstamps=%s",!MASTER_TIMESTAMP_FOR_ALL_?"true":"false");
-    
+
+    if (nh_pvt_.getParam("reverseX", reverseX_)) 
+        ROS_INFO("  reverse X set to: %s",reverseX_?"true":"false");
+        else ROS_WARN("  'reverseX' Parameter not set, using default behavior reverseX=%s",reverseX_?"true":"false");    
+
+    if (nh_pvt_.getParam("reverseY", reverseY_)) 
+        ROS_INFO("  reverse Y set to: %s",reverseY_?"true":"false");
+        else ROS_WARN("  'reverseY' Parameter not set, using default behavior reverseY=%s",reverseY_?"true":"false"); 
+
     if (nh_pvt_.getParam("color", color_)) 
         ROS_INFO("  color set to: %s",color_?"true":"false");
         else ROS_WARN("  'color' Parameter not set, using default behavior color=%s",color_?"true":"false");
@@ -489,6 +499,9 @@ void acquisition::Capture::init_cameras(bool soft = false) {
             if (!soft) {
 
                 cams[i].set_color(color_);
+                ROS_INFO_STREAM("reverting x: %s y: %s \n",reverseX_,reverseY_ );
+                cams[i].setBoolValue("ReverseX", reverseX_);
+                cams[i].setBoolValue("ReverseY", reverseY_);
                 cams[i].setIntValue("BinningHorizontal", binning_);
                 cams[i].setIntValue("BinningVertical", binning_);
 
@@ -537,6 +550,7 @@ void acquisition::Capture::init_cameras(bool soft = false) {
                     cams[i].setEnumValue("TriggerOverlap", "ReadOut");//"Off"
                     cams[i].setEnumValue("TriggerActivation", "RisingEdge");
                 }
+                //printf("reverting x: %s y: %s\n",reverseX_,reverseY_ );
             }
         }
 

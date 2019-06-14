@@ -94,6 +94,9 @@ namespace acquisition {
         string dump_img_;
         string ext_;
         float exposure_time_;
+        // used to flip the picture
+        bool reverseX_;
+        bool reverseY_;
         // int decimation_;
 
         int soft_framerate_; // Software (ROS) frame rate
