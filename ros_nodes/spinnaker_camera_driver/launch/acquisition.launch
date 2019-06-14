@@ -3,7 +3,7 @@
   <env name="ROSCONSOLE_CONFIG_FILE" value="$(find spinnaker_sdk_camera_driver)/cfg/std_console.conf"/>
 
   <!-- acquisition.lauynch -->
-  <arg name="binning"		    default="1"	doc="Binning for cameras, when changing from 2 to 1 cameras need to be unplugged and replugged"/>
+  <arg name="binning"		    default="2"	doc="Binning for cameras, when changing from 2 to 1 cameras need to be unplugged and replugged"/>
   <arg name="color"		        default="true"	doc="Should color images be used (only works on models that support color images)"/>
   <arg name="exp"               default="0"	doc="Exposure setting for cameras"/>
   <arg name="frames"            default="3400"	doc="Numer of frames to save/view 0=ON"/>
@@ -19,7 +19,8 @@
   <arg name="utstamps"          default="false"	doc="Flag whether each image should have Unique timestamps vs the master cams time stamp for all" />
   <arg name="max_rate_save"     default="false"	doc="Flag for max rate mode which is when the master triggerst the slaves and saves images at maximum rate possible" />
   <arg name="config_file"       default="$(find spinnaker_sdk_camera_driver)/params/test_params.yaml" doc="File specifying the parameters of the camera_array"/>
-
+  <arg name="reverseX"           default="true" doc="Flip camera picture horizontally"/>
+  <arg name="reverseY"           default="false" doc="Flip camera picture vertically"/>
   <!-- load the acquisition node -->
   <node pkg="spinnaker_sdk_camera_driver" type="acquisition_node" name="acquisition_node" output="$(arg output)"
 	args="">
@@ -44,6 +45,9 @@
     <param name="utstamps"          value="$(arg utstamps)" />
     <param name="to_ros"            value="$(arg to_ros)"/>
     <param name="max_rate_save"     value="$(arg max_rate_save)"/>
+    <param name="reverseX"            value="$(arg reverseX)"/>
+    <param name="reverseY"            value="$(arg reverseY)"/>
+
 
   </node>    
  

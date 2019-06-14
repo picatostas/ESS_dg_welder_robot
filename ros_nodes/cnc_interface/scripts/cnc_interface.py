@@ -6,15 +6,15 @@ from geometry_msgs.msg import Twist
 
 from xyz import XYZ
 acceleration = 0  
-x_max = 0  
-y_max = 0   
-x_max = 0   
-x_max_speed = 0
-y_max_speed = 0
-z_max_speed = 0
-x_steps_mm = 0
-y_steps_mm = 0
-z_steps_mm = 0
+x_max 		 = 0  
+y_max 		 = 0   
+x_max 		 = 0   
+x_max_speed  = 0
+y_max_speed  = 0
+z_max_speed  = 0
+x_steps_mm   = 0
+y_steps_mm   = 0
+z_steps_mm   = 0
 
 xyz = XYZ()
 
