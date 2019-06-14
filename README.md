@@ -1,261 +1,60 @@
-# dg_welder_robot
+# Welder Robot
 
-This code is for controlling the welder robot used to weld the aluminum blades of the Multi-Grid neutron detectors.
-Using OpenCV and ROS middleware.
+This project is for controlling the welder robot used to weld the aluminum blade grids of the Multi-Grid neutron detector.
+Using [OpenCV](https://opencv.org/) and [ROS](https://www.ros.org/) middleware. Implemented in python and C++.
 
-ROS version : Melodic.
+A description of the contents of each directory in the repository can be found in [documentation/DIRECTORIES.md](documentation/DIRECTORIES.md).
 
-Ubuntu 18.04
+## Getting started
 
-Developed by Pablo Costas Franco
+### Prerequisites
 
-## Directory structure
+* Ubuntu 18.04
+* ROS Melodic Morenia
 
-```bash
-.
-├── opencv-projects
-│   ├── camera_calib_files
-│   ├── imgs
-│   │   └── chessboard
-│   └── scripts
-└── ros_nodes
-    ├── cnc_interface
-    │   ├── launch
-    │   └── scripts
-    ├── dummy_welder
-    │   └── scripts
-    ├── laser_ctrl
-    │   └── scripts
-    ├── led_ctrl
-    │   ├── launch
-    │   ├── msg
-    │   ├── scripts
-    │   ├── src
-    │   └── srv
-    ├── line_detection
-    │   └── scripts
-    ├── raspicam_node
-    │   ├── camera_info
-    │   ├── cmake
-    │   └── launch
-    ├── spinnaker_camera_driver
-    │   ├── cfg
-    │   ├── cmake
-    │   ├── docs
-    │   │   └── images
-    │   ├── include
-    │   │   └── spinnaker_sdk_camera_driver
-    │   ├── launch
-    │   ├── msg
-    │   ├── params
-    │   └── src
-    ├── welder-gui
-    │   └── imgs
-    └── welder_node_gui
-        ├── resource
-        │   └── imgs -> ../../welder-gui/imgs/
-        ├── scripts
-        └── src
-            └── welder_node_gui
+### Building
 
-```
+TBC
 
-## Description of nodes
+## Running the welder robot
 
-### Line_detection
+### Line detection
+For operations run
+`> rosrun line_detection line_detection_batch_query.py` 
 
-Detects grid lines
-	
-#### Suscribed topics: 
+For tests run
+`> rosrun line_detection line_detection_batch_stream.py`
 
-- Camera_frames
+### CNC interface
 
-- Camera info
+`> roslaunch cnc_interface smoothie.launch`
 
-- Detection_query
+Launch files: `smoothie.launch` is for a custom build of shapeoko T using Smoothieboard as a controller. For other axis systems create the `.launch` file. 
 
- 
-#### Published topics:
-
-- Blade & ref locations
-
-- Image with lines
- 
-
-### cnc_interface
-
-Sends GCODE through serial to the CNC
-
-#### Suscribed topics: 	
-
-- XYZ coordinates cmd
-
-- CNC stop
-	
-#### Published topics:
-- CNC movement status & position
-
+*Be careful when launching cnc_interface as the CNC will start homing.*
 
 ### Dummy welder
-
-Core of the system, generates trajectories and has 2 FSM to control everything
-
-#### Suscribed topics:
-
-- Blade & ref location
-
-- CNC status
-
-- Laser status
-
-- Welder cmd
 	
-#### Published topics:
+`> rosrun dummy_welder dummy_welder.py`
 
-- Detection query
+The detection ROI are set in `welder_fsm.py` file in `/dummy_welder`. A ROI is a coordinate from where the camera is able to spot a bunch of grids---in the case of the prototype, 6 ROI for 16 grids, 3 grids per ROI, skipping the overlapped ones.
 
-- Welder status
+### Laser ctrl
 
-- Laser cmd
+`> rosrun laser_ctrl laser_ctrl.py`
 
-- Cnc cmd & stop
-
-- Welder progress
-
-
-### Laser_ctrl
+### Welder node GUI
 	
-Controls the activation of the laser, checking that the status is the one that has to be in any moment
-	
-#### Suscribed topics:
+`> rqt --standalone welder_node_gui`
 
-- Laser cmd
+### Spinnaker SDK camera driver
 
-- Camera frames
+`> roslaunch spinnaker_sdk_camera_driver acquisition.launch`
 
-- Camera info
+## Author
 
-#### Published topics:
+Pablo Costas Franco
 
-- Camera frames with crosshair
+## License
 
-
-
-### Welder_node_gui
-	
-GUI to control welder. Reads from the Qt Gui file and runs the GUI within rqt ROS gui framework
-	
-#### Suscribed topics:
-
-- Welder status, time & progress
-
-- Camera frames with crosshair
-
-- Laser cmd
-
-#### Published topics:	
-
-- Welder cmd
-
- 
-### Spinnaker_sdk_camera_driver
-	
-Purpose: Publish FLIR camera in ros topics
-	
-#### Suscribed topics:
-
-- None
-	
-#### Published topics:	
-
-- Camera_frames
-
-- Camera info
-
-
-
-## How to run the nodes
-
-### Line_detection
-	
-`rosrun line_detection line_detection_batch_query.py` for operation
-
-`rosrun line_detection line_detection_batch_stream.py` for tests
-
-
-### cnc_interface
-
-Using a modified version of ROS-GRBL from openautomation, which basically deals with some exceptions of the 
-serial driver.
-
-https://github.com/openautomation/ROS-GRBL
-
-`roslaunch cnc_interface smoothie.launch`
-
-Launch files: smoothie.launch is for a custom build of shapeoko T using Smoothieboard as a controller.
-
-For other Axis systems create the .launch file 
-
-Be careful when launching cnc_interface as the CNC will automatically do the homing.
-
-
-### Dummy welder
-	
-`rosrun dummy_welder dummy_welder.py`
-
-The detection ROI are set in welder_fsm.py file in dummy_welder, a ROI is a coordinate from where the camera is able to spot a bunch of grids, in the case of the prototype, 6 roi for 16 grids, 3 grids per roi, skipping the overlapped ones.
-
-
-### Laser_ctrl	
-
-`rosrun laser_ctrl laser_ctrl.py`
-
-
-### Welder_node_gui
-	
-`rqt �standalone welder_node_gui`
-
-The GUI has been design with QtCreator. .ui file will be found in the Node files.
-
-
-Once everything is running in the GUI should appear the video stream, and when pressing start everything should work.
-
-
-### Spinnaker_sdk_camera_driver
-	
-Node written in C++, by neufieldrobotics
-
-https://github.com/neufieldrobotics/spinnaker_sdk_camera_driver
-
-`roslaunch spinnaker_sdk_camera_driver acquisition.launch`
-
-
-## TODO?
-
-### Line_detection
-	
-Take in account projected locations for the ROI
-
-### cnc_interface
-
-
-### Dummy welder
-
-- Calculate projection matrix and get real coordinates from the image pixels location.
-
-- Scale the code to process 48 grids instead of 16.
-
-
-### Laser_ctrl
-
-Change dependency on led_ctrl.py which was running on raspberryPi previous to use FLIR Camera.
-
-
-### Welder_node_gui
-	
-Use Qt signals for updating the GUI based on ROS callbacks, as now is crashy.
-
-
-### Spinnaker_sdk_camera_driver
-	
-Implement option for changing camera orientation and add parameter in .launch file.
+See LICENSE in parent directory
