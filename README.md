@@ -16,9 +16,10 @@ Developed by Pablo Costas Franco
 ### Line_detection
 	
 
-Purpose : Detect grid lines
+Detects grid lines
 	
-Suscribed topics: 
+#### Suscribed topics: 
+
 -       Camera_frames
 
 -       Camera info
@@ -26,7 +27,7 @@ Suscribed topics:
 -       Detection_query
 
  
-Published topics:
+#### Published topics:
 
 -       Blade & ref locations
 
@@ -37,71 +38,77 @@ Published topics:
 ### cnc_interface
 	
 
-Purpose : Sends GCODE through serial to the CNC
-Suscribed topics: 	
+Sends GCODE through serial to the CNC
+
+#### Suscribed topics: 	
 
 -       XYZ coordinates cmd
 
 -       CNC stop
 	
-Published topics:
+#### Published topics:
 -       CNC movement status & position
 
 ### Dummy welder
 	
 
-Purpose :Core of the system, generates trajectories and has 2 FSM to control everything
-Suscribed topics:
+Core of the system, generates trajectories and has 2 FSM to control everything
 
--       Blade & ref location
+#### Suscribed topics:
 
--       CNC status
+- Blade & ref location
 
--       Laser status
+- CNC status
 
--       Welder cmd
+- Laser status
+
+- Welder cmd
 	
-Published topics:
--       Detection query
+#### Published topics:
 
--       Welder status
+- Detection query
 
--       Laser cmd
+- Welder status
 
--       Cnc cmd & stop
+- Laser cmd
 
--       Welder progress
+- Cnc cmd & stop
+
+- Welder progress
 
 ### Laser_ctrl
 	
 
-Purpose: Controls the activation of the laser, checking that the status is the one that has to be in any moment
+Controls the activation of the laser, checking that the status is the one that has to be in any moment
 	
-Suscribed topics:
--       Laser cmd
+#### Suscribed topics:
 
--       Camera frames
+- Laser cmd
 
--       Camera info
+- Camera frames
 
-Published topics:
+- Camera info
 
--       Camera frames with crosshair
+#### Published topics:
+
+- Camera frames with crosshair
 
 ### Welder_node_gui
 	
 
-Purpose: Gui to control welder. Reads from the Qt Gui file and runs the GUI within rqt ROS gui framework
+GUI to control welder. Reads from the Qt Gui file and runs the GUI within rqt ROS gui framework
 	
-Suscribed topics:
--       Welder status, time & progress
+#### Suscribed topics:
 
--       Camera frames with crosshair
+- Welder status, time & progress
 
--       Laser cmd
-Published topics:	
+- Camera frames with crosshair
 
--       Welder cmd
+- Laser cmd
+
+#### Published topics:	
+
+- Welder cmd
 
  
 
@@ -110,14 +117,15 @@ Published topics:
 
 Purpose: Publish FLIR camera in ros topics
 	
-Suscribed topics:
--       None
+#### Suscribed topics:
+
+- None
 	
-Published topics:	
+#### Published topics:	
 
--       Camera_frames
+- Camera_frames
 
--       Camera info
+- Camera info
 
 
 
@@ -128,8 +136,9 @@ Published topics:
 ### Line_detection
 	
 
-rosrun line_detection line_detection_batch_query.py for operation
-rosrun line_detection line_detection_batch_stream.py for tests
+`rosrun line_detection line_detection_batch_query.py` for operation
+
+`rosrun line_detection line_detection_batch_stream.py` for tests
 
 ### cnc_interface
 
@@ -139,11 +148,11 @@ serial driver.
 https://github.com/openautomation/ROS-GRBL
 
 
-roslaunch cnc_interface smoothie.launch
+`roslaunch cnc_interface smoothie.launch`
 
 Launch files: smoothie.launch is for a custom build of shapeoko T using Smoothieboard as a controller.
 
-For other Axis systems just create the .launch file 
+For other Axis systems create the .launch file 
 
  
 Be careful when launching cnc_interface as the CNC will automatically do the homing.
@@ -151,7 +160,7 @@ Be careful when launching cnc_interface as the CNC will automatically do the hom
 ### Dummy welder
 	
 
-rosrun dummy_welder dummy_welder.py
+`rosrun dummy_welder dummy_welder.py`
 
 
 The detection ROI are set in welder_fsm.py file in dummy_welder, a ROI is a coordinate from where the camera is able to spot a bunch of grids, in the case of the prototype, 6 roi for 16 grids, 3 grids per roi, skipping the overlapped ones.
@@ -159,12 +168,12 @@ The detection ROI are set in welder_fsm.py file in dummy_welder, a ROI is a coor
 
 ### Laser_ctrl	
 
-rosrun laser_ctrl laser_ctrl.py
+`rosrun laser_ctrl laser_ctrl.py`
 
 ### Welder_node_gui
 	
 
-rqt â€“standalone welder_node_gui
+`rqt –standalone welder_node_gui`
 
 The GUI has been design with QtCreator. .ui file will be found in the Node files.
 
@@ -177,7 +186,7 @@ Node written in C++, by neufieldrobotics
 
 https://github.com/neufieldrobotics/spinnaker_sdk_camera_driver
 
-roslaunch spinnaker_sdk_camera_driver acquisition.launch
+`roslaunch spinnaker_sdk_camera_driver acquisition.launch`
 
 
 ## List of things that needs to be done
@@ -192,8 +201,9 @@ Take in account projected locations for the ROI
 
 ### Dummy welder
 
--Calculate projection matrix and get real coordinates from the image pixels location.
--Scale the code to process 48 grids instead of 16.
+- Calculate projection matrix and get real coordinates from the image pixels location.
+
+- Scale the code to process 48 grids instead of 16.
 
 
 ### Laser_ctrl
@@ -209,4 +219,3 @@ Use Qt signals for updating the GUI based on ROS callbacks, as now is crashy.
 	
 
 Implement option for changing camera orientation and add parameter in .launch file.
-
