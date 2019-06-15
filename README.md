@@ -1,7 +1,7 @@
 # Welder Robot
 
 This project is for controlling the welder robot used to weld the aluminum blade grids of the Multi-Grid neutron detector.
-Using [OpenCV](https://opencv.org/) and [ROS](https://www.ros.org/) middleware. Implemented in python and C++.
+Using [OpenCV](https://opencv.org/) and [ROS](https://www.ros.org/) middleware. Implemented in Python and C++.
 
 A description of the contents of each directory in the repository can be found in [documentation/DIRECTORIES.md](documentation/DIRECTORIES.md).
 
@@ -14,15 +14,18 @@ A description of the contents of each directory in the repository can be found i
 
 ### Building
 
-TBC
+catkin
 
 ## Running the welder robot
 
+All of the following ROS nodes are located in ros_nodes/
+
 ### Line detection
-For operations run
+
+**For operations**
 `> rosrun line_detection line_detection_batch_query.py` 
 
-For tests run
+**For tests**
 `> rosrun line_detection line_detection_batch_stream.py`
 
 ### CNC interface
@@ -51,10 +54,10 @@ The detection ROI are set in `welder_fsm.py` file in `/dummy_welder`. A ROI is a
 
 `> roslaunch spinnaker_sdk_camera_driver acquisition.launch`
 
-## Author
+## Author(s)
 
-Pablo Costas Franco
+* Pablo Costas Franco
 
 ## License
 
-See LICENSE in parent directory
+See [LICENSE](LICENSE) in parent directory
