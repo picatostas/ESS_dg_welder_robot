@@ -1,12 +1,8 @@
+
 import numpy as np
 import cv2
 import glob
 import yaml
-
-# copy parameters to arrays
-#K = np.array([[1588.8406075452856, 0.0, 968.4316269781474],[0.0, 1472.3533526712627, 446.3351454689702],[0.0, 0.0, 1.0]])
-#d = np.array([1,1,1,1,1])
-# just use first two terms
 
 with open('calibration.yaml') as f:
     calibration = yaml.load(f)
@@ -15,7 +11,7 @@ distort = calibration['dist_coeff']
 K = np.array(matrix)
 d = np.array(distort)
 
-images = glob.glob('chess_test_9.jpg')
+images = glob.glob('*.png')
 
 for fname in images:
     # read image
