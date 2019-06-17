@@ -42,6 +42,8 @@ Launch files: `smoothie.launch` is for a custom build of shapeoko T using Smooth
 
 The detection ROI are set in `welder_fsm.py` file in `/dummy_welder`. A ROI is a coordinate from where the camera is able to spot a bunch of grids---in the case of the prototype, 6 ROI for 16 grids, 3 grids per ROI, skipping the overlapped ones.
 
+See description of the FSM used as a draw.io diagram 'FSM welder-laser.xml' in the parent directory
+
 ### Laser ctrl
 
 `> rosrun laser_ctrl laser_ctrl.py`
