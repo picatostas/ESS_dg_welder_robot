@@ -14,11 +14,13 @@ A description of the contents of each directory in the repository can be found i
 
 ### Building
 
-catkin
+Using the [catkin](http://wiki.ros.org/catkin) utility.
+
+Copy all the contents from ``dg_welder_robot/ros_nodes/`` of this repository into ``${YOUR_WORKSPACE}/src/``, then run ``catkin_make`` and ``source /devel/setup.bash`` from the root directory of your workspace.
 
 ## Running the welder robot
 
-All of the following ROS nodes are located in ros_nodes/
+All of the following ROS nodes are located in ``ros_nodes/``, and ``roscore`` must be run prior to starting any of the nodes.
 
 ### Line detection
 
@@ -34,15 +36,15 @@ All of the following ROS nodes are located in ros_nodes/
 
 Launch files: `smoothie.launch` is for a custom build of shapeoko T using Smoothieboard as a controller. For other axis systems create the `.launch` file. 
 
-*Be careful when launching cnc_interface as the CNC will start homing.*
+*If connected, the CNC will start homing after launching cnc_interface.*
 
 ### Dummy welder
 	
 `> rosrun dummy_welder dummy_welder.py`
 
-The detection ROI are set in `welder_fsm.py` file in `/dummy_welder`. A ROI is a coordinate from where the camera is able to spot a bunch of grids---in the case of the prototype, 6 ROI for 16 grids, 3 grids per ROI, skipping the overlapped ones.
+The detection regions of interest (ROI) are set in `welder_fsm.py` file in `dummy_welder/`. A ROI is here a coordinate from where the camera is able to spot a bunch of grids---for the prototype welder robot it's specifically 6 ROI for 16 grids and 3 grids per ROI (skipping the overlapped ones).
 
-See description of the FSM used as a draw.io diagram 'FSM welder-laser.xml' in the parent directory
+See description of the finite state machine (FSM) as a draw.io diagram ``'FSM welder-laser.xml'`` in the parent directory.
 
 ### Laser ctrl
 

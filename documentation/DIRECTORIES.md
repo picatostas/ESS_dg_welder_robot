@@ -4,6 +4,7 @@ The repository contains the following directories
 
 ```bash
 > tree -d -L 2
+dg_welder_robot
 .
 ├── camera_calibration
 │   ├── flir
@@ -25,6 +26,8 @@ The repository contains the following directories
 
 ## Camera calibration
 
+Help utility to calibrate camera.
+
 Directory            	| Function
 -------------        	| -------------
 flir						| calibration files for the FLIR camera
@@ -39,7 +42,7 @@ dummy welder				| core application, generates trajectories and has 2 finite stat
 laser ctrl				| controls the activation of the laser
 led ctrl					| 
 line detection			| detects grid lines
-raspicam node				| 
+raspicam node				| publishes raspicam camera in ROS topics
 spinnaker sdk camera driver	| publishes FLIR camera in ROS topics
 welder gui				| 
 welder node gui			| GUI to control welder
