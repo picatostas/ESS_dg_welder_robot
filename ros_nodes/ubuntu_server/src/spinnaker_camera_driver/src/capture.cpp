@@ -499,7 +499,7 @@ void acquisition::Capture::init_cameras(bool soft = false) {
             if (!soft) {
 
                 cams[i].set_color(color_);
-                ROS_INFO_STREAM("reverting x: %s y: %s \n",reverseX_,reverseY_ );
+                //ROS_INFO_STREAM("reverting x: %s y: %s \n",reverseX_,reverseY_ );
                 cams[i].setBoolValue("ReverseX", reverseX_);
                 cams[i].setBoolValue("ReverseY", reverseY_);
                 cams[i].setIntValue("BinningHorizontal", binning_);

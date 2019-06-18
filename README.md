@@ -16,7 +16,15 @@ A description of the contents of each directory in the repository can be found i
 
 Using the [catkin](http://wiki.ros.org/catkin) utility.
 
-Copy all the contents from ``dg_welder_robot/ros_nodes/`` of this repository into ``${YOUR_WORKSPACE}/src/``, then run ``catkin_make`` and ``source /devel/setup.bash`` from the root directory of your workspace.
+Copy or make a symbolic link to all the contents from ``dg_welder_robot/ros_nodes/`` of this repository into ``${YOUR_WORKSPACE}/src/``, then run ``catkin_make`` and ``source /devel/setup.bash`` from the root directory of your workspace.
+
+For those nodes running on the computer, copy/link the contents in ``ros_nodes/ubuntu_server/src `` for those running in RPi, the same but ``ros_nodes/raspberry/src ``
+
+How to link the files
+
+`ln -s dg_welder_robot/ros_nodes/ubuntu_server/src ``${YOUR_WORKSPACE}/ `
+
+`ln -s dg_welder_robot/ros_nodes/raspberry/src ``${YOUR_WORKSPACE}/ `
 
 ## Running the welder robot
 
