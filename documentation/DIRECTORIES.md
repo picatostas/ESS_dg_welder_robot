@@ -3,25 +3,30 @@
 The repository contains the following directories
 
 ```bash
-> tree -d -L 2
-dg_welder_robot
-.
+> tree -d -L 4
+dg_welder_robot/
 ├── camera_calibration
 │   ├── flir
+│   │   └── cube
 │   └── raspicam
+│       ├── camera_calib_files
+│       └── chessboard
 ├── documentation
 └── ros_nodes
-    ├── cnc_interface
-    ├── dummy_welder
-    ├── laser_ctrl
-    ├── led_ctrl
-    ├── line_detection
-    ├── raspicam_node
-    ├── spinnaker_camera_driver
-    ├── welder-gui
-    └── welder_node_gui
+    ├── raspberry
+    │   └── src
+    │       ├── led_ctrl
+    │       └── raspicam_node
+    └── ubuntu_server
+        └── src
+            ├── cnc_interface
+            ├── dummy_welder
+            ├── laser_ctrl
+            ├── line_detection
+            ├── spinnaker_camera_driver
+            ├── welder-gui
+            └── welder_node_gui
 
-14 directories
 ```
 
 ## Camera calibration
